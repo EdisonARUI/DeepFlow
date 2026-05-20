@@ -1,0 +1,170 @@
+# PRODUCT.md
+
+## 产品名称
+
+Deepflow
+
+## 产品简介
+
+Deepflow 是一个面向 Sui 生态的 DeFi 资金流转中间件。
+
+它帮助用户在资金保持 DeFi 生息的同时，通过 Sui PTB 将提款、DeepBook 交易、结算和重新存入封装为一个原子化执行流程。
+
+Deepflow 也可以作为 AI Agent / Bot 的受控执行网关。Agent 可以提交交易意图，但资金是否能被调度、最多能调度多少、最终能流向哪里，都必须由 Deepflow 的策略和合约约束决定。
+
+## 产品定位
+
+Deepflow 不是普通交易 Bot，也不是中心化托管平台。
+
+它位于用户资金、生息协议、DeepBook 和 AI Agent / Bot 之间，提供安全、可组合、可回滚的资金执行层。
+
+核心价值：
+
+- 提高资金利用率。
+- 减少手动提款、交易、存款的多步操作。
+- 降低 AI Agent / Bot 误操作资金的风险。
+- 为 Sui DeFi 自动化策略提供标准化执行路由。
+
+## 目标用户
+
+Deepflow 面向 Sui 生态中关注资金效率和自动化执行的用户。
+
+典型用户包括：
+
+- 使用 Sui DeFi 协议生息的交易者。
+- 希望做自动 DCA 的用户。
+- 使用 DeepBook 或 DeepBook Predict Bot 的开发者。
+- 希望用 AI Agent 辅助交易但不愿交出完整资金控制权的用户。
+- 想把 DeFi 存款直接作为自动化 Execution Credit 的个人开发者。
+
+## 核心问题
+
+当前用户在 DeFi 自动化交易中面临以下问题：
+
+- 资金闲置：为了交易或 Bot 自动化，用户常常需要提前把资金放入 Bot 钱包或无收益账户。
+- 操作割裂：提款、交易、结算、重新存入通常是多个独立步骤，容易出错且成本高。
+- AI Agent 风险高：Agent 可能生成错误交易、无限循环或异常资金操作。
+- Bot 钱包管理复杂：用户需要额外维护独立钱包，导致资金分散。
+- 失败状态不可控：链上执行失败时，传统流程可能留下中间状态或难以诊断的错误。
+
+## MVP 核心功能
+
+### 1. 一键资金调度
+
+用户或 Bot 只需要提交一次高级执行请求。
+
+Deepflow 根据请求自动完成：
+
+- 从用户授权的 DeFi 生息位置提取所需资金。
+- 路由到 DeepBook 执行交易。
+- 将交易后的资产重新存入目标 DeFi 协议或返还到用户白名单地址。
+
+### 2. 原子化执行
+
+Deepflow 需要通过 Sui PTB 将完整资金流转封装为一个原子流程。
+
+流程包括：
+
+1. withdraw / borrow liquidity
+2. execute DeepBook trade 或 Predict action
+3. settle result
+4. repay / redeposit / return
+5. update accounting
+
+只要中间任一步失败，整条执行链路都应该回滚。
+
+### 3. 安全风控
+
+Deepflow 必须提供以下基础安全能力：
+
+- 滑点熔断：交易必须设置最小输出或最大可接受损失。
+- 终点锁死：最终资金只能流向用户配置的白名单地址或授权协议位置。
+- 周期预算：限制单次金额、每日或周期执行额度。
+- 频率限制：防止 Bot 或 Agent 高频 spam 交易。
+- Kill Switch：异常情况下停止新的执行。
+- Session Key：允许 Bot 在有限权限内执行，而不是获得完整钱包控制权。
+- 失败计数：连续失败或异常重试时触发保护。
+
+### 4. AI Agent 受控执行网关
+
+AI Agent / Bot 可以提交交易意图，但 Deepflow 必须在执行前检查：
+
+- 资产类型是否允许。
+- 交易方向是否允许。
+- 金额是否超过预算。
+- 目的地是否在白名单中。
+- 滑点是否超限。
+- Session 是否有效。
+- Kill Switch 是否开启。
+
+如果不满足要求，Deepflow 应返回明确拒绝原因，而不是尝试执行。
+
+### 5. DeFi-backed Execution Credit
+
+Deepflow 应支持用户把已有 DeFi 资产作为自动化执行信用来源。
+
+MVP 可以先支持一个 credit source，例如：
+
+- NAVI 存款
+- Cetus LP
+- Mock credit source
+
+不要求第一版同时支持多个协议。
+
+## 核心场景
+
+### 场景一：自动化 DCA
+
+用户资金平时留在 DeFi 生息协议中。
+
+当 DCA 周期触发时，Deepflow 通过 PTB 提取当期所需本金，路由到 DeepBook 完成交易，再把新资产存回生息协议。
+
+用户不需要提前把未来几期的 DCA 资金放在闲置钱包中。
+
+### 场景二：跨协议单步流转
+
+用户希望使用 DeFi 协议中的资产进行 DeepBook 交易。
+
+Deepflow 将提款、交易、重新存入合并为一次执行，减少多次签名和手动操作。
+
+### 场景三：AI Agent / Bot 安全执行
+
+Agent 只负责生成策略或提交意图。
+
+Deepflow 负责检查策略是否符合资金安全规则。
+
+如果 Agent 产生异常指令，Deepflow 应拒绝执行或通过链上回滚保护资金。
+
+## 商业模式
+
+MVP 可考虑以下收入方式：
+
+- 成功执行手续费：只在执行成功时收取固定费用或小比例费用。
+- 手续费封顶：大额交易设置单笔最高费用上限。
+- DeepBook 返佣：通过标准路由捕获 DeepBook 生态返佣。
+
+未来可选：
+
+- Idle yield spread。
+- 高级 Runtime Monitoring。
+- Pro Runtime Plan。
+
+## 非目标
+
+MVP 不做以下内容：
+
+- 不做中心化托管。
+- 不做完整交易所。
+- 不做通用钱包。
+- 不做跨链资金管理。
+- 不做高频量化平台。
+- 不默认要求用户把全部资金转入 Bot 钱包。
+- 不同时集成大量 DeFi 协议。
+
+## 待确认问题
+
+- MVP 首个交易路径选择 DeepBook Predict 还是 DeepBook spot。
+- MVP 首个 credit source 选择 NAVI、Cetus 还是 mock adapter。
+- 哪些策略必须在 Move 合约层强制执行，哪些可先放在 SDK 原型中。
+- 第一版是否需要 Dashboard。
+- 费用资产、费率和封顶规则如何设计。
