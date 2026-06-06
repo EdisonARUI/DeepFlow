@@ -59,21 +59,42 @@ Deepflow 的核心方向是：
 
 ## 当前仓库状态
 
-- 当前仓库仍处于 Harness / 文档阶段。
-- 目前没有 SDK、Move 合约、前端、测试框架或 CI 配置。
-- 当前目录是 git 仓库。
-- 下一步应先选择实现切片，再创建项目结构。
+- 已有 `sdk/` TypeScript SDK 原型（含策略校验、mock route、mock PTB、Vitest 测试）。
+- 已有 `asset/figma/` Figma 设计资产（四屏截图、参考代码、图标、设计 token）。
+- 仓库根已初始化 Next.js 15 Dashboard（dApp Kit + Tailwind v4），四页路由占位已就绪。
+- 尚无 Move 合约、真实链上 Adapter 或 CI 配置。
+- 当前目录是 git 仓库，根 `package.json` 为 Dashboard，`workspaces: ["sdk"]` 管理 SDK。
+
+## 前端开发指引
+
+产品 Dashboard 位于**仓库根**（`app/`、`components/`），设计稿来源 `asset/figma/`。
+
+已确认技术栈：
+
+- Next.js 15（App Router）+ TypeScript
+- @mysten/dapp-kit-react + @mysten/sui（钱包接入）
+- shadcn/ui + Tailwind CSS（UI 组件）
+- Recharts（图表）、Lucide React（图标）
+- workspace 依赖 `@deepflow/sdk`
+
+前端约束：
+
+- 钱包连接必须使用 Sui dApp Kit `ConnectButton`，禁止自研 Wallet Standard 适配。
+- Dashboard 不是托管钱包，不得持有或代管用户私钥。
+- 前端只提交执行意图和展示数据；策略校验必须走 SDK `validateIntent` / `safeExecute`。
+- 不得绕过 Policy Engine 直接构造高权限 PTB。
+- Liquidity 页多协议展示为设计示意，MVP 仍只接一个 credit source。
+- 实现时参照 `asset/figma/reference/*.tsx` 和 `tokens.json`，使用 shadcn/ui 组件而非原生 HTML/CSS。
 
 ## 推荐下一步
 
-优先从 TypeScript SDK 原型开始：
+Dashboard 脚手架已完成，下一轮进入 UI 还原：
 
-1. 创建 `packages/sdk`。
-2. 定义 `ExecutionIntent`、`ExecutionPolicy`、`CreditSource`、`RoutePlan`、`ExecutionResult`。
-3. 实现策略校验模块。
-4. 为滑点、终点、预算、Session Scope、Kill Switch 添加单元测试。
-5. 使用 mock PTB route graph 模拟资金流转。
-6. 再考虑接入真实 Sui SDK、DeepBook、NAVI 或 Cetus。
+1. 安装 shadcn/ui、Recharts、Lucide，映射 `asset/figma/tokens.json` 设计 token。
+2. 实现 AppShell + 四页静态 UI（Portfolio / Liquidity / Trading / Security）。
+3. 接线 `@deepflow/sdk` workspace 依赖。
+4. 本地验证：`npm run dev`。
+5. 并行推进真实 Sui SDK、PTB Builder 和 Move 合约设计。
 
 ## 完成标准
 

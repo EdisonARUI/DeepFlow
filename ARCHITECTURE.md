@@ -6,7 +6,13 @@ Deepflow 是一个 Sui DeFi 原子化资金执行中间件。
 
 它不是单纯前端项目，也不是普通后端服务。核心架构应围绕 Sui PTB、Move 合约、TypeScript SDK 和策略校验模块展开。
 
-当前仓库仍处于文档阶段，尚未创建实际代码结构。
+当前仓库已有：
+
+- `sdk/` TypeScript SDK 原型（策略校验、mock route、mock PTB、Vitest 测试）
+- 仓库根 Next.js Dashboard 占位（四页路由 + dApp Kit 接入）
+- `asset/figma/` 设计资产
+
+尚未创建 Move 合约和真实链上 Adapter。
 
 ## 主要技术栈
 
@@ -18,12 +24,37 @@ Deepflow 是一个 Sui DeFi 原子化资金执行中间件。
 - Sui TypeScript SDK
 - DeepBook SDK 或 DeepBook 合约接口
 - 单元测试框架，例如 Vitest
-- 可选前端：Next.js、React、Tailwind CSS、shadcn/ui
+- 前端：Next.js 15（App Router）、React、TypeScript、Tailwind CSS、shadcn/ui、Recharts、Lucide React
+- 钱包接入：@mysten/dapp-kit-react、@mysten/sui
 
 可选集成：
 
 - NAVI Protocol
-- DeepBook 
+- DeepBook
+
+## 仓库布局
+
+Deepflow 采用**扁平单仓库**结构：**仓库根即产品 Dashboard**，不是空壳 monorepo。各顶层目录职责如下：
+
+| 目录 | 职责 | 状态 |
+|------|------|------|
+| `app/`、`components/`、`lib/` | 产品 Dashboard（Next.js App Router） | 已初始化，UI 待还原 |
+| `sdk/` | 执行中间件 TypeScript SDK（`@deepflow/sdk`） | 原型已完成 |
+| `move/` | Move 链上约束合约 | 待建 |
+| `asset/figma/` | Figma 设计资产（截图、参考代码、token） | 已有 |
+| `docs/` | 产品与设计文档 | 已有 |
+
+模块依赖关系：
+
+```text
+Dashboard (仓库根)
+  └─ workspace 依赖 ─> sdk/ (@deepflow/sdk)
+                          └─ 未来对接 ─> move/
+
+asset/figma/            设计参考，供 Dashboard 实现对照
+```
+
+根 `package.json` 同时承担 Dashboard 运行时与 npm workspace 宿主，`workspaces: ["sdk"]` 仅用于 `@deepflow/sdk` 独立测试与发布。
 
 ## 总体架构
 
@@ -56,9 +87,9 @@ DeFi Credit Source
 
 ## 核心模块
 
-### 1. TypeScript SDK
+### 1. TypeScript SDK（`sdk/`）
 
-SDK 是开发者和 Bot 接入 Deepflow 的主要入口。
+SDK 是开发者和 Bot 接入 Deepflow 的主要入口，包名 `@deepflow/sdk`。
 
 建议 API：
 
@@ -77,6 +108,16 @@ SDK 负责：
 - 构建 PTB。
 - 执行 dry run 或 simulation。
 - 返回成功、失败或拒绝原因。
+
+第一版原型已实现：
+
+- `src/types.ts` 定义核心执行数据模型。
+- `src/policy/validate.ts` 实现策略校验。
+- `src/routing/mock-route.ts` 使用 mock credit source 与 mock DeepBook route graph 生成 `RoutePlan`。
+- `src/simulation/mock-ptb.ts` 输出本地 mock PTB。
+- `src/client.ts` 提供 `safeExecute`，执行顺序为策略预检、路由规划、带 quote 复检、构建 mock PTB。
+
+尚未创建真实 Sui PTB Builder 和外部协议 Adapter。
 
 ### 2. Policy Engine
 
@@ -119,7 +160,7 @@ PTB Builder 不负责决定请求是否安全。它只能接收已验证的 `Rou
 - Settlement Adapter
 - Fee Adapter
 
-### 4. Move Contracts
+### 4. Move Contracts（`move/`）
 
 Move 合约用于承载最终资金安全约束。
 
@@ -147,25 +188,78 @@ Move 合约用于承载最终资金安全约束。
 - Move 合约校验用于保护真实资产。
 - 凡是会影响资金去向、额度和权限的规则，最终都应能在链上强制执行。
 
-### 5. Dashboard
+### 5. Dashboard（仓库根 Next.js 应用）
 
-Dashboard 不是 MVP 的第一优先级，但后续可以提供：
+产品 Dashboard 位于仓库根目录（`app/`、`components/`），设计稿落盘于 `asset/figma/`。
 
-- Execution Budget 展示。
-- Active Sessions 展示。
-- Credit Sources 展示。
-- Approved / Rejected Tx 记录。
-- Runtime Alerts。
-- Kill Switch 状态。
-- Policy Presets。
+#### 技术栈
 
-建议技术栈：
+- **框架**：Next.js 15（App Router）+ TypeScript
+- **钱包**：@mysten/dapp-kit-react + @mysten/sui（默认 testnet）
+- **UI**：shadcn/ui（Radix 原语）+ Tailwind CSS
+- **图表**：Recharts（Portfolio 净值曲线、资产分布）
+- **图标**：Lucide React（实现阶段逐步替换 Figma 导出图标）
+- **字体**：JetBrains Mono（标签/数据）、Geist（品牌标题）
+- **SDK 依赖**：根 `package.json` workspace 引用 `@deepflow/sdk`
 
-- Next.js
-- React
-- TypeScript
-- shadcn/ui
-- Recharts 或 ECharts
+#### 页面与路由
+
+| 路由 | Figma 节点 | 页面 | SDK 概念映射 |
+|------|-----------|------|-------------|
+| `/portfolio` | `107:343` | 净值、资产分布、操作历史 | `ExecutionResult` 遥测 |
+| `/liquidity` | `1:542` | DeFi 协议表、Supply/Withdraw | `CreditSource` |
+| `/trading` | `1:2` | 交易对、Swap、订单簿、PTB 管线 | `ExecutionIntent` |
+| `/security` | `11:2` | 终点白名单、熔断器、配额、Session | `ExecutionPolicy` |
+
+四页共享 **AppShell**：左侧 256px 侧栏、顶栏面包屑（`DEEPFLOW_TERMINAL / {SECTION}`）、右上角 dApp Kit `ConnectButton`。
+
+#### dApp Kit 集成约定
+
+遵循 [Sui dApp Kit Next.js 指南](https://sdk.mystenlabs.com/dapp-kit/getting-started/next-js)：
+
+- `app/dapp-kit.ts`：`createDAppKit({ networks: ['testnet'], createClient })` + module augmentation
+- `app/providers.tsx`：`'use client'` 包裹 `DAppKitProvider`
+- `components/connect-button.tsx`：客户端挂载后再渲染 `ConnectButton`，避免 SSR `window` 报错
+- `app/layout.tsx`：SSR 外壳，引入 Provider
+- 顶栏 `CONNECT_WALLET` **必须**使用 dApp Kit `ConnectButton`，禁止自研 Wallet Standard 适配
+
+#### 信任边界
+
+- Dashboard 只负责展示、表单收集和提交执行意图，**不是**资金安全边界。
+- 所有执行请求必须经过 `@deepflow/sdk` 的 `validateIntent` / `safeExecute` 策略校验。
+- 钱包签名和链上读写通过 dApp Kit hooks 完成，前端不得绕过 SDK 直接构造高权限 PTB。
+- Liquidity 页展示的 NAVI / Scallop / Cetus 为设计稿示意；MVP 仍只接一个 credit source。
+
+## 目录结构
+
+```text
+deepflow/                          # 仓库根 = Next.js Dashboard
+  app/                             # App Router [已有]
+    dapp-kit.ts
+    layout.tsx
+    providers.tsx
+    portfolio/page.tsx
+    liquidity/page.tsx
+    trading/page.tsx
+    security/page.tsx
+  components/                      # Dashboard 组件 [已有]
+  lib/                             # 前端共享工具 [待建]
+  sdk/                             # @deepflow/sdk [已有]
+    src/
+      policy/
+      routing/
+      simulation/
+    tests/
+  move/                            # Move 合约 [待建]
+    deepflow/
+      sources/
+      tests/
+  asset/figma/                     # 设计资产 [已有]
+  docs/
+  package.json                     # Dashboard + workspace: ["sdk"]
+  next.config.ts
+  tsconfig.json
+```
 
 ## 核心数据模型
 
@@ -261,61 +355,43 @@ Dashboard 不是 MVP 的第一优先级，但后续可以提供：
 - Session Key 不能越权访问用户完整钱包。
 - Agent 不能绕过 Policy Engine 直接构造高权限资金流。
 
-## 建议目录结构
-
-未来可以采用以下结构：
-
-```text
-packages/
-  sdk/
-    src/
-      intent/
-      policy/
-      routing/
-      adapters/
-      simulation/
-    tests/
-
-move/
-  deepflow/
-    sources/
-    tests/
-
-apps/
-  dashboard/
-
-docs/
-  prd.md
-```
-
 ## 推荐实现顺序
 
-第一阶段：
+第一阶段（已完成）：
 
-- 创建 TypeScript SDK 原型。
-- 实现核心类型。
-- 实现 Policy Engine。
+- 创建 TypeScript SDK 原型（`sdk/`）。
+- 实现核心类型与 Policy Engine。
 - 使用 mock route plan 模拟 PTB。
 - 添加单元测试。
+- 导出 Figma 设计资产到 `asset/figma/`。
+- 确认 Dashboard 技术栈并完成仓库根 Next.js 初始化。
+- 扁平化仓库结构，移除 `apps/` 与 `packages/` 嵌套层。
 
-第二阶段：
+第二阶段（进行中）：
+
+- 安装 shadcn/ui、Recharts、Lucide，映射设计 token。
+- 实现 AppShell + 四页静态 UI（mock 数据）。
+- 接线 `@deepflow/sdk` workspace 依赖。
+
+第三阶段：
 
 - 接入 Sui SDK。
 - 增加 PTB Builder。
 - 增加 DeepBook mock adapter。
 - 增加 Credit Source mock adapter。
-
-第三阶段：
-
-- 创建 Move 合约。
-- 实现 Vault、Policy Guard、Kill Switch。
-- 添加 Move 测试。
+- Dashboard 接线真实 SDK 调用。
 
 第四阶段：
 
+- 创建 Move 合约（`move/deepflow/`）。
+- 实现 Vault、Policy Guard、Kill Switch。
+- 添加 Move 测试。
+
+第五阶段：
+
 - 接入真实 DeepBook 和一个 DeFi 协议。
 - 增加 simulation / dry run。
-- 再考虑 Dashboard。
+- Dashboard 展示真实链上数据。
 
 ## 当前未决架构问题
 
