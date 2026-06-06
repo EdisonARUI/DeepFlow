@@ -180,6 +180,46 @@ deepflowClient.safeExecute(intent)
 
 ⸻
 
+## 本地 SDK 原型
+
+当前仓库已新增第一版 TypeScript SDK 原型：
+
+```text
+sdk/
+```
+
+第一版能力：
+
+* 定义 `ExecutionIntent`、`ExecutionPolicy`、`CreditSource`、`RoutePlan`、`ExecutionResult`。
+* 提供 `validateIntent(intent, policy)` 策略校验。
+* 提供 `safeExecute(intent, policy, { creditSources })` 本地闭环入口。
+* 校验资产、市场、终点白名单、滑点、单次额度、周期额度、执行频率、Session Scope、Kill Switch 和连续失败限制。
+* 使用 mock route graph 模拟 `withdraw -> DeepBook trade -> settle -> redeposit / return`。
+* 输出 mock PTB，并显式标记 `atomic: true` 和 `rollbackGuarantee: "all-or-nothing"`。
+
+运行测试：
+
+```sh
+npm test
+```
+
+当前 SDK 原型不连接真实 Sui、DeepBook、NAVI 或 Cetus。真实适配器应在策略闭环稳定后再接入。
+
+## 本地开发
+
+仓库根即 Next.js Dashboard，常用命令：
+
+```sh
+npm install
+npm run dev              # 启动 Dashboard（http://localhost:3000）
+npm run build            # 生产构建
+npm test                 # SDK 单元测试
+```
+
+`dev:dashboard` 与 `build:dashboard` 为兼容别名，等价于 `dev` / `build`。
+
+⸻
+
 ## SDK 功能
 
 * 接收 execution intent。
@@ -209,7 +249,7 @@ deepflowClient.safeExecute(intent)
 
 ## 前端 / Dashboard
 
-`prd.md` 未将前端或 Dashboard 定义为 MVP 核心范围。当前 README 不展开前端技术栈和页面功能，后续如需加入 Dashboard，应先同步更新 PRD。
+仓库根已初始化 Next.js Dashboard（Sui dApp Kit + 四页路由占位）。本地启动见上文「本地开发」章节。
 
 ⸻
 
