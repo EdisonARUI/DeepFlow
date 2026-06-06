@@ -1,0 +1,36 @@
+{
+  "name": "deepflow",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "sdk"
+  ],
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "dev:dashboard": "npm run dev",
+    "build": "next build",
+    "build:dashboard": "npm run build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "npm --workspace @deepflow/sdk run test"
+  },
+  "dependencies": {
+    "@deepflow/sdk": "workspace:*",
+    "@mysten/dapp-kit-react": "^1.0.3",
+    "@mysten/sui": "^2.5.0",
+    "next": "^15.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.0",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "eslint": "^9.28.0",
+    "eslint-config-next": "^15.5.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.8.0"
+  }
+}
