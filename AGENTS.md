@@ -29,8 +29,13 @@ Deepflow 的核心方向是：
    - 会话交接文档。
    - 告诉 Agent 当前任务哪些已经完成、哪些未完成、下一步应该做什么。
 
+4. `CODING-RULES.md`
+   - 编码与目录规范。
+   - 告诉 Agent 前端/SDK 代码应如何组织、命名、拆分组件与划定 client 边界。
 
 如果用户最新明确需求与上述文档冲突，以用户最新需求为准，但必须同步更新相关文档。
+
+修改前端目录或组件结构前，必须先阅读 `CODING-RULES.md`。
 
 ## 工作原则
 
@@ -41,6 +46,7 @@ Deepflow 的核心方向是：
 - 不要让 AI Agent 或 Bot 获得不受限制的资金控制权。
 - 涉及产品需求变更时，必须更新 `PRODUCT.md`。
 - 涉及技术架构、模块边界、安全模型变更时，必须更新 `ARCHITECTURE.md`。
+- 涉及前端目录结构、组件拆分或编码风格变更时，必须更新 `CODING-RULES.md`。
 - 每轮任务结束后，必须更新 `SESSION-HANDSOFF.md`。
 - 面向用户或项目维护者的说明优先使用中文。
 - 代码和协议命名可以使用英文，以保持与 Sui、Move、TypeScript 生态一致。
@@ -61,7 +67,8 @@ Deepflow 的核心方向是：
 
 - 已有 `sdk/` TypeScript SDK 原型（含策略校验、mock route、mock PTB、Vitest 测试）。
 - 已有 `asset/figma/` Figma 设计资产（四屏截图、参考代码、图标、设计 token）。
-- 仓库根已初始化 Next.js 15 Dashboard（dApp Kit + Tailwind v4），四页路由占位已就绪。
+- 仓库根已初始化 Next.js 15 Dashboard（dApp Kit + Tailwind v4），四页静态 UI 已按 Figma 还原。
+- 前端目录已规范化为 `app/(dashboard)/{feature}/_components/` 共置模式。
 - 尚无 Move 合约、真实链上 Adapter 或 CI 配置。
 - 当前目录是 git 仓库，根 `package.json` 为 Dashboard，`workspaces: ["sdk"]` 管理 SDK。
 
@@ -77,24 +84,20 @@ Deepflow 的核心方向是：
 - Recharts（图表）、Lucide React（图标）
 - workspace 依赖 `@deepflow/sdk`
 
-前端约束：
+目录结构、组件拆分、命名与 client 边界等编码细则见 **`CODING-RULES.md`**。
+
+前端安全约束（不可违背）：
 
 - 钱包连接必须使用 Sui dApp Kit `ConnectButton`，禁止自研 Wallet Standard 适配。
 - Dashboard 不是托管钱包，不得持有或代管用户私钥。
 - 前端只提交执行意图和展示数据；策略校验必须走 SDK `validateIntent` / `safeExecute`。
 - 不得绕过 Policy Engine 直接构造高权限 PTB。
-- Liquidity 页多协议展示为设计示意，MVP 仍只接一个 credit source。
-- 实现时参照 `asset/figma/reference/*.tsx` 和 `tokens.json`，使用 shadcn/ui 组件而非原生 HTML/CSS。
 
 ## 推荐下一步
 
-Dashboard 脚手架已完成，下一轮进入 UI 还原：
-
-1. 安装 shadcn/ui、Recharts、Lucide，映射 `asset/figma/tokens.json` 设计 token。
-2. 实现 AppShell + 四页静态 UI（Portfolio / Liquidity / Trading / Security）。
-3. 接线 `@deepflow/sdk` workspace 依赖。
-4. 本地验证：`npm run dev`。
-5. 并行推进真实 Sui SDK、PTB Builder 和 Move 合约设计。
+1. 接线 `@deepflow/sdk`：Trading 页 `validateIntent` / mock execute；Security 页映射 `ExecutionPolicy` 字段。
+2. 浏览器内手动验证钱包连接（`npm run dev`）。
+3. 并行推进真实 Sui SDK、PTB Builder 和 Move 合约设计。
 
 ## 完成标准
 
@@ -104,5 +107,6 @@ Dashboard 脚手架已完成，下一轮进入 UI 还原：
 - 修改没有违背 `PRODUCT.md`、`ARCHITECTURE.md` 的核心约束。
 - 如果修改了产品范围，已经同步更新 `PRODUCT.md`。
 - 如果修改了架构假设，已经同步更新 `ARCHITECTURE.md`。
+- 如果变更了编码规范或目录约定，已经同步更新 `CODING-RULES.md`。
 - `SESSION-HANDSOFF.md` 已经记录本轮完成情况、未完成事项和下一步。
 - 如果存在可运行代码，已经执行相关测试或说明无法测试的原因。
