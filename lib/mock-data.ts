@@ -192,11 +192,58 @@ export const DEFI_ROWS: DeFiRow[] = [
   },
 ];
 
-export const MARKET_PAIRS = [
-  { pair: "SUI - USDC", price: "0.1129", active: true },
-  { pair: "DEEP - SUI", price: "0.0842", active: false },
-  { pair: "USDC - USDT", price: "1.0001", active: false },
-  { pair: "WAL - SUI", price: "0.0312", active: false },
+export type MarketPair = {
+  pair: string;
+  price: string;
+  baseAsset: string;
+  quoteAsset: string;
+  rate: number;
+  baseBalance: number;
+  quoteBalance: number;
+  active?: boolean;
+};
+
+export const MARKET_PAIRS: MarketPair[] = [
+  {
+    pair: "SUI - USDC",
+    price: "0.1129",
+    baseAsset: "SUI",
+    quoteAsset: "USDC",
+    rate: 1.4515,
+    baseBalance: 1452,
+    quoteBalance: 0,
+    active: true,
+  },
+  {
+    pair: "DEEP - SUI",
+    price: "0.0842",
+    baseAsset: "DEEP",
+    quoteAsset: "SUI",
+    rate: 0.0842,
+    baseBalance: 1850.75,
+    quoteBalance: 8200,
+    active: false,
+  },
+  {
+    pair: "USDC - USDT",
+    price: "1.0001",
+    baseAsset: "USDC",
+    quoteAsset: "USDT",
+    rate: 1.0001,
+    baseBalance: 12500.5,
+    quoteBalance: 0,
+    active: false,
+  },
+  {
+    pair: "WAL - SUI",
+    price: "0.0312",
+    baseAsset: "WAL",
+    quoteAsset: "SUI",
+    rate: 0.0312,
+    baseBalance: 3400,
+    quoteBalance: 8200,
+    active: false,
+  },
 ];
 
 export type OrderBookEntry = {

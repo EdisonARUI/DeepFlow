@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  ArrowDown,
+  ArrowDownUp,
   FileText,
   LayoutGrid,
   Network,
@@ -21,11 +21,45 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { MARKET_PAIRS, ORDER_BOOK, PTB_STEPS } from "@/lib/mock-data";
+import {
+  MARKET_PAIRS,
+  ORDER_BOOK,
+  PTB_STEPS,
+  type MarketPair,
+} from "@/lib/mock-data";
 
-export function MarketPairs() {
-  const [active, setActive] = useState("SUI - USDC");
+function formatBalance(value: number) {
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
 
+function getSwapAssets(pair: MarketPair, isReversed: boolean) {
+  const from = isReversed ? pair.quoteAsset : pair.baseAsset;
+  const to = isReversed ? pair.baseAsset : pair.quoteAsset;
+  const fromBalance = isReversed ? pair.quoteBalance : pair.baseBalance;
+  const toBalance = isReversed ? pair.baseBalance : pair.quoteBalance;
+  const displayRate = isReversed ? 1 / pair.rate : pair.rate;
+
+  return { from, to, fromBalance, toBalance, displayRate };
+}
+
+function computeToAmount(
+  fromAmount: number,
+  pair: MarketPair,
+  isReversed: boolean,
+) {
+  if (!Number.isFinite(fromAmount) || fromAmount <= 0) return 0;
+  return isReversed ? fromAmount / pair.rate : fromAmount * pair.rate;
+}
+
+type MarketPairsProps = {
+  selectedPair: string;
+  onSelectPair: (pair: string) => void;
+};
+
+export function MarketPairs({ selectedPair, onSelectPair }: MarketPairsProps) {
   return (
     <TerminalPanel
       className="h-full"
@@ -42,10 +76,10 @@ export function MarketPairs() {
           <button
             key={pair.pair}
             type="button"
-            onClick={() => setActive(pair.pair)}
+            onClick={() => onSelectPair(pair.pair)}
             className={cn(
               "flex w-full items-center justify-between border-b border-border-muted/40 px-3 py-3 text-left text-[12px] tracking-[0.6px]",
-              active === pair.pair
+              selectedPair === pair.pair
                 ? "border-l-2 border-l-accent-cyan bg-accent-cyan/10"
                 : "hover:bg-bg-panel-header/50",
             )}
@@ -59,7 +93,27 @@ export function MarketPairs() {
   );
 }
 
-export function SwapWidget() {
+type SwapWidgetProps = {
+  pairData: MarketPair;
+  isReversed: boolean;
+  onToggleDirection: () => void;
+};
+
+export function SwapWidget({
+  pairData,
+  isReversed,
+  onToggleDirection,
+}: SwapWidgetProps) {
+  const [fromAmount, setFromAmount] = useState("100.00");
+
+  const { from, to, fromBalance, toBalance, displayRate } = useMemo(
+    () => getSwapAssets(pairData, isReversed),
+    [pairData, isReversed],
+  );
+
+  const parsedFromAmount = parseFloat(fromAmount) || 0;
+  const toAmount = computeToAmount(parsedFromAmount, pairData, isReversed);
+
   return (
     <TerminalPanel
       className="h-full"
@@ -69,44 +123,65 @@ export function SwapWidget() {
       <div className="space-y-2">
         <div className="flex justify-between text-[11px] text-text-muted uppercase">
           <span>From</span>
-          <span>Balance: 1,452.00 SUI</span>
+          <span>
+            Balance: {formatBalance(fromBalance)} {from}
+          </span>
         </div>
         <div className="flex items-center gap-3 border border-border-default bg-bg-secondary p-4">
           <Input
-            defaultValue="100.00"
+            value={fromAmount}
+            onChange={(e) => setFromAmount(e.target.value)}
             className="h-auto flex-1 rounded-none border-0 bg-transparent p-0 text-3xl shadow-none focus-visible:ring-0"
           />
-          <Select defaultValue="sui">
+          <Select value={from.toLowerCase()} disabled>
             <SelectTrigger className="w-24 rounded-none border-border-default">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="sui">SUI</SelectItem>
+              <SelectItem value={pairData.baseAsset.toLowerCase()}>
+                {pairData.baseAsset}
+              </SelectItem>
+              <SelectItem value={pairData.quoteAsset.toLowerCase()}>
+                {pairData.quoteAsset}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
       <div className="flex justify-center">
-        <div className="flex size-8 items-center justify-center rounded-full border border-border-default bg-bg-panel">
-          <ArrowDown className="size-4 text-accent-cyan" />
-        </div>
+        <button
+          type="button"
+          onClick={onToggleDirection}
+          className="flex size-8 cursor-pointer items-center justify-center rounded-full border border-border-default bg-bg-panel transition-colors hover:border-accent-cyan hover:bg-accent-cyan/10"
+          aria-label="Swap direction"
+        >
+          <ArrowDownUp className="size-4 text-accent-cyan" />
+        </button>
       </div>
       <div className="space-y-2">
         <div className="flex justify-between text-[11px] text-text-muted uppercase">
           <span>To</span>
-          <span>Balance: 0.00 USDC</span>
+          <span>
+            Balance: {formatBalance(toBalance)} {to}
+          </span>
         </div>
         <div className="flex items-center gap-3 border border-border-default bg-bg-secondary p-4">
           <Input
-            defaultValue="145.15"
+            readOnly
+            value={toAmount > 0 ? toAmount.toFixed(2) : "0.00"}
             className="h-auto flex-1 rounded-none border-0 bg-transparent p-0 text-3xl shadow-none focus-visible:ring-0"
           />
-          <Select defaultValue="usdc">
+          <Select value={to.toLowerCase()} disabled>
             <SelectTrigger className="w-24 rounded-none border-border-default">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="usdc">USDC</SelectItem>
+              <SelectItem value={pairData.baseAsset.toLowerCase()}>
+                {pairData.baseAsset}
+              </SelectItem>
+              <SelectItem value={pairData.quoteAsset.toLowerCase()}>
+                {pairData.quoteAsset}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -114,7 +189,9 @@ export function SwapWidget() {
       <dl className="space-y-2 border-t border-border-muted/40 pt-4 text-[12px] tracking-[0.6px]">
         <div className="flex justify-between">
           <dt className="text-text-muted">Rate</dt>
-          <dd>1 SUI = 1.4515 USDC</dd>
+          <dd>
+            1 {from} = {displayRate.toFixed(4)} {to}
+          </dd>
         </div>
         <div className="flex justify-between">
           <dt className="text-text-muted">Fee</dt>
@@ -126,6 +203,28 @@ export function SwapWidget() {
         Execute
       </Button>
     </TerminalPanel>
+  );
+}
+
+export function TradingWorkspace() {
+  const [selectedPair, setSelectedPair] = useState(MARKET_PAIRS[0].pair);
+  const [isReversed, setIsReversed] = useState(false);
+
+  const pairData =
+    MARKET_PAIRS.find((p) => p.pair === selectedPair) ?? MARKET_PAIRS[0];
+
+  return (
+    <>
+      <MarketPairs
+        selectedPair={selectedPair}
+        onSelectPair={setSelectedPair}
+      />
+      <SwapWidget
+        pairData={pairData}
+        isReversed={isReversed}
+        onToggleDirection={() => setIsReversed((prev) => !prev)}
+      />
+    </>
   );
 }
 
