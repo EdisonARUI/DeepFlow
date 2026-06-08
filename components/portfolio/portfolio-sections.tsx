@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
   Tooltip,
   XAxis,
+  YAxis,
 } from "recharts";
 import { RotateCw } from "lucide-react";
 import { TerminalLabel } from "@/components/terminal-label";
@@ -24,25 +25,55 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
-  ASSET_ALLOCATION,
+  ASSET_ALLOCATION_BY_FILTER,
   NET_WORTH,
-  NET_WORTH_CHART,
+  NET_WORTH_CHART_BY_TIMEFRAME,
   PROTOCOL_ACTIONS,
   PROTOCOL_FILTERS,
 } from "@/lib/mock-data";
 
 const TIMEFRAMES = ["1W", "15D", "1M"] as const;
 
+const axisTickStyle = {
+  fill: "#b9ccb2",
+  fontSize: 10,
+  fontFamily: "var(--font-mono)",
+};
+
+function formatChartDate(date: string) {
+  const [, month, day] = date.split("-");
+  return `${month}/${day}`;
+}
+
+function formatChartValue(value: number) {
+  if (value >= 1_000_000) {
+    return `$${(value / 1_000_000).toFixed(1)}M`;
+  }
+  if (value >= 1_000) {
+    return `$${Math.round(value / 1_000)}K`;
+  }
+  return `$${value.toFixed(0)}`;
+}
+
+function formatTooltipValue(value: number) {
+  return `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 export function NetWorthChart() {
   const [timeframe, setTimeframe] = useState<(typeof TIMEFRAMES)[number]>("1M");
+  const chartData = NET_WORTH_CHART_BY_TIMEFRAME[timeframe];
+  const xTickInterval = useMemo(() => {
+    if (timeframe === "1W") return 0;
+    if (timeframe === "15D") return 2;
+    return 4;
+  }, [timeframe]);
 
   return (
     <TerminalPanel
-      className="col-span-2"
-      contentClassName="p-0"
+      className="col-span-2 flex h-full min-h-0 flex-col"
+      contentClassName="flex min-h-0 flex-1 flex-col p-0"
       title={
         <div className="flex flex-wrap items-center gap-4">
           <TerminalLabel>NET_WORTH_PERFORMANCE</TerminalLabel>
@@ -72,9 +103,12 @@ export function NetWorthChart() {
         </div>
       }
     >
-      <div className="h-[320px] px-6 pb-6">
+      <div className="min-h-[240px] flex-1 px-6 pb-6">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={NET_WORTH_CHART} margin={{ top: 16, right: 8, left: 0, bottom: 0 }}>
+          <AreaChart
+            data={chartData}
+            margin={{ top: 16, right: 8, left: 4, bottom: 8 }}
+          >
             <defs>
               <linearGradient id="netWorthFill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#00e0ff" stopOpacity={0.35} />
@@ -82,11 +116,20 @@ export function NetWorthChart() {
               </linearGradient>
             </defs>
             <XAxis
-              dataKey="label"
+              dataKey="date"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "#b9ccb2", fontSize: 10, fontFamily: "var(--font-mono)" }}
+              tick={axisTickStyle}
+              tickFormatter={formatChartDate}
+              interval={xTickInterval}
               dy={8}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={axisTickStyle}
+              tickFormatter={formatChartValue}
+              width={52}
             />
             <Tooltip
               contentStyle={{
@@ -96,6 +139,8 @@ export function NetWorthChart() {
                 fontFamily: "var(--font-mono)",
               }}
               labelStyle={{ color: "#b9ccb2" }}
+              labelFormatter={(label) => formatChartDate(String(label))}
+              formatter={(value) => [formatTooltipValue(Number(value)), "Net Worth"]}
             />
             <Area
               type="monotone"
@@ -115,10 +160,12 @@ export function NetWorthChart() {
 
 export function AssetDistribution() {
   const [filter, setFilter] = useState<(typeof PROTOCOL_FILTERS)[number]>("ALL");
+  const allocation = ASSET_ALLOCATION_BY_FILTER[filter];
 
   return (
     <TerminalPanel
-      contentClassName="p-0"
+      className="flex h-full min-h-0 flex-col"
+      contentClassName="flex min-h-0 flex-1 flex-col p-0"
       title={<TerminalLabel>ASSET_DISTRIBUTION</TerminalLabel>}
       actions={
         <Button variant="ghost" size="icon-sm" className="text-accent-cyan">
@@ -143,19 +190,19 @@ export function AssetDistribution() {
           </button>
         ))}
       </div>
-      <div className="flex flex-col items-center gap-8 p-8">
+      <div className="flex flex-1 flex-col items-center gap-8 p-8">
         <div className="relative size-48">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={ASSET_ALLOCATION}
+                data={allocation}
                 dataKey="percent"
                 nameKey="name"
                 innerRadius={58}
                 outerRadius={80}
                 stroke="none"
               >
-                {ASSET_ALLOCATION.map((entry) => (
+                {allocation.map((entry) => (
                   <Cell key={entry.name} fill={entry.color} />
                 ))}
               </Pie>
@@ -170,7 +217,7 @@ export function AssetDistribution() {
           <p className="text-[10px] tracking-[1px] text-text-muted uppercase opacity-50">
             Asset allocation
           </p>
-          {ASSET_ALLOCATION.map((item) => (
+          {allocation.map((item) => (
             <div
               key={item.name}
               className="flex items-center justify-between border-b border-border-muted/40 py-1"

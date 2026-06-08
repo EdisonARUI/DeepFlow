@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Building2, Box } from "lucide-react";
 import { TerminalLabel } from "@/components/terminal-label";
 import { TerminalPanel } from "@/components/terminal-panel";
@@ -25,9 +25,18 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { DEFI_ROWS } from "@/lib/mock-data";
+import {
+  DEFI_ROWS,
+  getDeFiRowKey,
+  type DeFiRow,
+} from "@/lib/mock-data";
 
-export function DeFiConnectivity() {
+type DeFiConnectivityProps = {
+  selectedKey: string;
+  onSelect: (key: string) => void;
+};
+
+export function DeFiConnectivity({ selectedKey, onSelect }: DeFiConnectivityProps) {
   return (
     <TerminalPanel
       contentClassName="p-0"
@@ -55,44 +64,61 @@ export function DeFiConnectivity() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {DEFI_ROWS.map((row) => (
-            <TableRow
-              key={`${row.protocol}-${row.asset}`}
-              className={cn(
-                "border-border-muted/40",
-                row.selected && "bg-accent-cyan/10",
-              )}
-            >
-              <TableCell>
-                <div className="flex items-center gap-2 text-[12px] tracking-[0.6px]">
-                  <span
-                    className="size-2 rounded-full"
-                    style={{ backgroundColor: row.protocolColor }}
-                  />
-                  {row.protocol}
-                </div>
-              </TableCell>
-              <TableCell className="text-right text-[12px]">{row.asset}</TableCell>
-              <TableCell className="text-right text-[12px] text-text-muted">
-                {row.tvl}
-              </TableCell>
-              <TableCell className="text-right text-[12px] text-accent-green">
-                {row.apy}
-              </TableCell>
-              <TableCell className="text-right text-[12px] text-[#a5eeff]">
-                {row.balance}
-              </TableCell>
-            </TableRow>
-          ))}
+          {DEFI_ROWS.map((row) => {
+            const rowKey = getDeFiRowKey(row);
+            return (
+              <TableRow
+                key={rowKey}
+                onClick={() => onSelect(rowKey)}
+                className={cn(
+                  "cursor-pointer border-border-muted/40 hover:bg-bg-secondary/60",
+                  selectedKey === rowKey && "bg-accent-cyan/10",
+                )}
+              >
+                <TableCell>
+                  <div className="flex items-center gap-2 text-[12px] tracking-[0.6px]">
+                    <span
+                      className="size-2 rounded-full"
+                      style={{ backgroundColor: row.protocolColor }}
+                    />
+                    {row.protocol}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right text-[12px]">{row.asset}</TableCell>
+                <TableCell className="text-right text-[12px] text-text-muted">
+                  {row.tvl}
+                </TableCell>
+                <TableCell className="text-right text-[12px] text-accent-green">
+                  {row.apy}
+                </TableCell>
+                <TableCell className="text-right text-[12px] text-[#a5eeff]">
+                  {row.balance}
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </TerminalPanel>
   );
 }
 
-export function PositionManagement() {
+type PositionManagementProps = {
+  selectedRow: DeFiRow;
+  onAssetChange: (key: string) => void;
+};
+
+export function PositionManagement({
+  selectedRow,
+  onAssetChange,
+}: PositionManagementProps) {
   const [amount, setAmount] = useState("0.00");
   const [slider, setSlider] = useState([0]);
+
+  const protocolAssets = useMemo(
+    () => DEFI_ROWS.filter((row) => row.protocol === selectedRow.protocol),
+    [selectedRow.protocol],
+  );
 
   return (
     <Tabs defaultValue="supply">
@@ -128,14 +154,17 @@ export function PositionManagement() {
                 <Label className="text-[11px] tracking-[1.1px] text-text-muted uppercase">
                   Supply_to{" "}
                   <span className="inline-flex items-center gap-1 text-accent-cyan">
-                    <span className="size-1.5 rounded-full bg-accent-cyan" />
-                    [NAVI]
+                    <span
+                      className="size-1.5 rounded-full"
+                      style={{ backgroundColor: selectedRow.protocolColor }}
+                    />
+                    {selectedRow.protocol}
                   </span>
                 </Label>
                 <div className="mt-3 border border-border-default bg-bg-secondary p-4">
                   <div className="mb-2 flex justify-between text-[11px] text-text-muted uppercase">
                     <span>Input_amount</span>
-                    <span>Wallet balance: 0</span>
+                    <span>Wallet balance: {selectedRow.balance}</span>
                   </div>
                   <div className="flex items-center gap-4">
                     <Input
@@ -143,13 +172,22 @@ export function PositionManagement() {
                       onChange={(e) => setAmount(e.target.value)}
                       className="h-auto flex-1 rounded-none border-0 bg-transparent p-0 text-3xl shadow-none focus-visible:ring-0"
                     />
-                    <Select defaultValue="usdc">
+                    <Select
+                      value={selectedRow.asset}
+                      onValueChange={(asset) => {
+                        const row = protocolAssets.find((r) => r.asset === asset);
+                        if (row) onAssetChange(getDeFiRowKey(row));
+                      }}
+                    >
                       <SelectTrigger className="w-28 rounded-none border-border-default bg-bg-panel">
-                        <SelectValue placeholder="USDC" />
+                        <SelectValue placeholder={selectedRow.asset} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="usdc">USDC</SelectItem>
-                        <SelectItem value="sui">SUI</SelectItem>
+                        {protocolAssets.map((row) => (
+                          <SelectItem key={row.asset} value={row.asset}>
+                            {row.asset}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -181,7 +219,7 @@ export function PositionManagement() {
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-text-muted">Supply APR</dt>
-                  <dd className="text-accent-green">3.014%</dd>
+                  <dd className="text-accent-green">{selectedRow.apy}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-text-muted">Gas fee</dt>
@@ -195,9 +233,23 @@ export function PositionManagement() {
           </div>
         </TabsContent>
         <TabsContent value="withdraw" className="mt-0 p-6 text-sm text-text-muted">
-          Withdraw 表单占位（静态 mock，与 Supply 布局对称）。
+          Withdraw 表单占位（{selectedRow.protocol} / {selectedRow.asset}，静态 mock，与 Supply
+          布局对称）。
         </TabsContent>
       </TerminalPanel>
     </Tabs>
+  );
+}
+
+export function LiquidityPageSections() {
+  const [selectedKey, setSelectedKey] = useState(getDeFiRowKey(DEFI_ROWS[0]));
+  const selectedRow =
+    DEFI_ROWS.find((row) => getDeFiRowKey(row) === selectedKey) ?? DEFI_ROWS[0];
+
+  return (
+    <>
+      <DeFiConnectivity selectedKey={selectedKey} onSelect={setSelectedKey} />
+      <PositionManagement selectedRow={selectedRow} onAssetChange={setSelectedKey} />
+    </>
   );
 }

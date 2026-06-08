@@ -7,20 +7,68 @@ export const NAV_ITEMS = [
 
 export const NET_WORTH = 1248392.42;
 
-export const NET_WORTH_CHART = [
-  { label: "30_DAYS_AGO", value: 980000 },
-  { label: "20_DAYS_AGO", value: 1050000 },
-  { label: "10_DAYS_AGO", value: 1180000 },
-  { label: "CURRENT_CYCLE", value: 1248392 },
-];
+export type NetWorthPoint = { date: string; value: number };
 
-export const ASSET_ALLOCATION = [
-  { name: "USDC", percent: 60, color: "#00e0ff" },
-  { name: "SUI", percent: 25, color: "#ffba20" },
-  { name: "DEEP", percent: 15, color: "#e5e2e1" },
-];
+function generateNetWorthSeries(days: number, endValue: number): NetWorthPoint[] {
+  const endDate = new Date("2026-06-06");
+  const startValue = endValue * 0.78;
+  const points: NetWorthPoint[] = [];
+
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(endDate);
+    date.setDate(endDate.getDate() - i);
+    const progress = (days - 1 - i) / Math.max(days - 1, 1);
+    const trend = startValue + (endValue - startValue) * progress;
+    const wave = Math.sin(i * 1.7) * endValue * 0.012;
+    const value = Math.round((trend + wave) * 100) / 100;
+    points.push({
+      date: date.toISOString().slice(0, 10),
+      value: i === 0 ? endValue : value,
+    });
+  }
+
+  return points;
+}
+
+export const NET_WORTH_CHART_BY_TIMEFRAME = {
+  "1W": generateNetWorthSeries(7, NET_WORTH),
+  "15D": generateNetWorthSeries(15, NET_WORTH),
+  "1M": generateNetWorthSeries(30, NET_WORTH),
+} as const;
+
+export type AssetAllocationItem = {
+  name: string;
+  percent: number;
+  color: string;
+};
 
 export const PROTOCOL_FILTERS = ["ALL", "NAVI", "SCALLOP", "CETUS", "DEEPBOOK"] as const;
+export type ProtocolFilter = (typeof PROTOCOL_FILTERS)[number];
+
+export const ASSET_ALLOCATION_BY_FILTER: Record<ProtocolFilter, AssetAllocationItem[]> = {
+  ALL: [
+    { name: "USDC", percent: 60, color: "#00e0ff" },
+    { name: "SUI", percent: 25, color: "#ffba20" },
+    { name: "DEEP", percent: 15, color: "#e5e2e1" },
+  ],
+  NAVI: [
+    { name: "USDC", percent: 45, color: "#00e0ff" },
+    { name: "SUI", percent: 35, color: "#ffba20" },
+    { name: "suiUSDe", percent: 20, color: "#72ff70" },
+  ],
+  SCALLOP: [
+    { name: "USDC", percent: 55, color: "#00e0ff" },
+    { name: "WAL", percent: 45, color: "#ff9100" },
+  ],
+  CETUS: [
+    { name: "DEEP", percent: 55, color: "#e5e2e1" },
+    { name: "SUI", percent: 45, color: "#ffba20" },
+  ],
+  DEEPBOOK: [
+    { name: "USDC", percent: 65, color: "#00e0ff" },
+    { name: "DEEP", percent: 35, color: "#e5e2e1" },
+  ],
+};
 
 export type ProtocolAction = {
   date: string;
@@ -87,8 +135,11 @@ export type DeFiRow = {
   tvl: string;
   apy: string;
   balance: string;
-  selected?: boolean;
 };
+
+export function getDeFiRowKey(row: DeFiRow): string {
+  return `${row.protocol}-${row.asset}`;
+}
 
 export const DEFI_ROWS: DeFiRow[] = [
   {
@@ -98,7 +149,6 @@ export const DEFI_ROWS: DeFiRow[] = [
     tvl: "$8.1M",
     apy: "+8.1%",
     balance: "12,500.50",
-    selected: true,
   },
   {
     protocol: "[NAVI]",
