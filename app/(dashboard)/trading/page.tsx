@@ -1,8 +1,6 @@
-import {
-  DeepbookOrders,
-  PtbPipeline,
-  TradingWorkspace,
-} from "@/components/trading/trading-sections";
+import { DeepbookOrders } from "./_components/deepbook-orders";
+import { PtbPipeline } from "./_components/ptb-pipeline";
+import { TradingWorkspace } from "./_components/trading-workspace";
 
 export default function TradingPage() {
   return (

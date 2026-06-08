@@ -1,8 +1,6 @@
-import {
-  AssetDistribution,
-  NetWorthChart,
-  ProtocolActionsHistory,
-} from "@/components/portfolio/portfolio-sections";
+import { AssetDistribution } from "./_components/asset-distribution";
+import { NetWorthChart } from "./_components/net-worth-chart";
+import { ProtocolActionsHistory } from "./_components/protocol-actions-history";
 
 export default function PortfolioPage() {
   return (

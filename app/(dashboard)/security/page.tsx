@@ -1,9 +1,7 @@
-import {
-  CircuitBreakers,
-  EndpointLock,
-  QuotaManagement,
-  SessionKeysPanel,
-} from "@/components/security/security-sections";
+import { CircuitBreakers } from "./_components/circuit-breakers";
+import { EndpointLock } from "./_components/endpoint-lock";
+import { QuotaManagement } from "./_components/quota-management";
+import { SessionKeysPanel } from "./_components/session-keys-panel";
 
 export default function SecurityPage() {
   return (
