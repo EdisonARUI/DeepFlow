@@ -9,7 +9,14 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ASSET_ALLOCATION_BY_FILTER, PROTOCOL_FILTERS } from "@/lib/mock-data";
 
-export function AssetDistribution() {
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+export function AssetComposition() {
   const [filter, setFilter] = useState<(typeof PROTOCOL_FILTERS)[number]>("ALL");
   const allocation = ASSET_ALLOCATION_BY_FILTER[filter];
 
@@ -17,7 +24,7 @@ export function AssetDistribution() {
     <TerminalPanel
       className="flex h-full min-h-0 flex-col"
       contentClassName="flex min-h-0 flex-1 flex-col p-0"
-      title={<TerminalLabel>ASSET_DISTRIBUTION</TerminalLabel>}
+      title={<TerminalLabel className="text-accent-green">ASSET_COMPOSITION</TerminalLabel>}
       actions={
         <Button variant="ghost" size="icon-sm" className="text-accent-cyan">
           <RotateCw className="size-4" />
@@ -64,22 +71,18 @@ export function AssetDistribution() {
             <span className="text-base font-bold text-text-primary">OPTIMAL</span>
           </div>
         </div>
-        <div className="w-full space-y-2">
-          <p className="text-[10px] tracking-[1px] text-text-muted uppercase opacity-50">
-            Asset allocation
-          </p>
+        <div className="grid w-full grid-cols-2 gap-4">
           {allocation.map((item) => (
-            <div
-              key={item.name}
-              className="flex items-center justify-between border-b border-border-muted/40 py-1"
-            >
-              <div className="flex items-center gap-2">
-                <span className="size-2" style={{ backgroundColor: item.color }} />
-                <span className="text-[11px] text-text-primary">{item.name}</span>
+            <div key={item.name} className="flex items-center gap-3">
+              <span className="size-2 shrink-0" style={{ backgroundColor: item.color }} />
+              <div>
+                <p className="text-[10px] text-text-muted">
+                  {item.name} ({item.percent}%)
+                </p>
+                <p className="text-[12px] tracking-[0.6px] text-text-primary">
+                  {currencyFormatter.format(item.value)}
+                </p>
               </div>
-              <span className="text-[10px]" style={{ color: item.color }}>
-                {item.percent}%
-              </span>
             </div>
           ))}
         </div>

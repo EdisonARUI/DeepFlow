@@ -1,6 +1,10 @@
+"use client";
+
+import { useState } from "react";
 import { TerminalLabel } from "@/components/terminal-label";
 import { TerminalPanel } from "@/components/terminal-panel";
 import { StatusBadge } from "@/components/status-badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -10,51 +14,62 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { PROTOCOL_ACTIONS } from "@/lib/mock-data";
+import { TRANSACTIONS } from "@/lib/mock-data";
 
-export function ProtocolActionsHistory() {
+const TIMEFRAMES = ["7_DAYS", "30_DAYS"] as const;
+
+export function TransactionHistory() {
+  const [timeframe, setTimeframe] = useState<(typeof TIMEFRAMES)[number]>("30_DAYS");
+
   return (
     <TerminalPanel
       className="col-span-full"
       contentClassName="p-0"
-      title={<TerminalLabel>PROTOCOL_ACTIONS_HISTORY</TerminalLabel>}
+      title={<TerminalLabel className="text-accent-green">TRANSACTION_HISTORY</TerminalLabel>}
       actions={
-        <span className="text-[12px] tracking-[0.6px] text-text-muted uppercase">
-          Filter: supply_withdraw
-        </span>
+        <div className="flex gap-2">
+          {TIMEFRAMES.map((tf) => (
+            <Button
+              key={tf}
+              variant="outline"
+              size="sm"
+              onClick={() => setTimeframe(tf)}
+              className={cn(
+                "h-auto rounded-none border-border-default px-2.5 py-0.5 text-[12px] tracking-[0.6px] uppercase",
+                timeframe === tf
+                  ? "border-accent-green text-accent-green"
+                  : "bg-transparent text-text-muted",
+              )}
+            >
+              {tf}
+            </Button>
+          ))}
+        </div>
       }
     >
       <Table>
         <TableHeader>
           <TableRow className="border-border-default hover:bg-transparent">
-            {["DATE", "ACTION", "PROTOCOL", "ASSET", "AMOUNT", "STATUS", "TX_HASH"].map(
-              (col) => (
-                <TableHead
-                  key={col}
-                  className={cn(
-                    "text-[11px] font-bold tracking-[0.6px] text-text-muted uppercase",
-                    col === "TX_HASH" && "text-right",
-                  )}
-                >
-                  {col}
-                </TableHead>
-              ),
-            )}
+            {["DATE", "TYPE", "ASSET", "AMOUNT", "STATUS", "TX_HASH"].map((col) => (
+              <TableHead
+                key={col}
+                className={cn(
+                  "text-[11px] font-bold tracking-[0.6px] text-text-muted uppercase",
+                  col === "TX_HASH" && "text-right",
+                )}
+              >
+                {col}
+              </TableHead>
+            ))}
           </TableRow>
         </TableHeader>
         <TableBody>
-          {PROTOCOL_ACTIONS.map((row) => (
+          {TRANSACTIONS.map((row) => (
             <TableRow key={row.txHash} className="border-border-muted/40">
               <TableCell className="text-[12px] text-text-primary/70">{row.date}</TableCell>
-              <TableCell
-                className={cn(
-                  "text-[12px] font-bold uppercase",
-                  row.action === "SUPPLY" ? "text-accent-cyan" : "text-accent-orange",
-                )}
-              >
-                {row.action}
+              <TableCell className="text-[12px] font-bold text-text-primary uppercase">
+                {row.type}
               </TableCell>
-              <TableCell className="text-[12px]">{row.protocol}</TableCell>
               <TableCell className="text-[12px]">{row.asset}</TableCell>
               <TableCell
                 className={cn(

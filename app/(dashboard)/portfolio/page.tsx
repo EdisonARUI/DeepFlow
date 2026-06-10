@@ -1,15 +1,17 @@
-import { AssetDistribution } from "./_components/asset-distribution";
-import { NetWorthChart } from "./_components/net-worth-chart";
-import { ProtocolActionsHistory } from "./_components/protocol-actions-history";
+import { AssetComposition } from "./_components/asset-composition";
+import { PortfolioSummaryStats } from "./_components/portfolio-summary-stats";
+import { ProtocolExposure } from "./_components/protocol-exposure";
+import { TransactionHistory } from "./_components/transaction-history";
 
 export default function PortfolioPage() {
   return (
     <div className="mx-auto max-w-[1280px] space-y-6 p-6">
-      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
-        <NetWorthChart />
-        <AssetDistribution />
+      <PortfolioSummaryStats />
+      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
+        <AssetComposition />
+        <ProtocolExposure />
       </div>
-      <ProtocolActionsHistory />
+      <TransactionHistory />
     </div>
   );
 }
