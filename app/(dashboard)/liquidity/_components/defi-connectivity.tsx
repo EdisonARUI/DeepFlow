@@ -11,15 +11,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { LiquidityPositionDisplay } from "@/lib/data/liquidity/liquidity-formatters";
 import { cn } from "@/lib/utils";
-import { DEFI_ROWS, getDeFiRowKey } from "@/lib/mock-data";
 
 type DeFiConnectivityProps = {
-  selectedKey: string;
-  onSelect: (key: string) => void;
+  positions: LiquidityPositionDisplay[];
+  selectedId: string;
+  onSelect: (id: string) => void;
 };
 
-export function DeFiConnectivity({ selectedKey, onSelect }: DeFiConnectivityProps) {
+export function DeFiConnectivity({ positions, selectedId, onSelect }: DeFiConnectivityProps) {
   return (
     <TerminalPanel
       contentClassName="p-0"
@@ -47,39 +48,36 @@ export function DeFiConnectivity({ selectedKey, onSelect }: DeFiConnectivityProp
           </TableRow>
         </TableHeader>
         <TableBody>
-          {DEFI_ROWS.map((row) => {
-            const rowKey = getDeFiRowKey(row);
-            return (
-              <TableRow
-                key={rowKey}
-                onClick={() => onSelect(rowKey)}
-                className={cn(
-                  "cursor-pointer border-border-muted/40 hover:bg-bg-secondary/60",
-                  selectedKey === rowKey && "bg-accent-cyan/10",
-                )}
-              >
-                <TableCell>
-                  <div className="flex items-center gap-2 text-[12px] tracking-[0.6px]">
-                    <span
-                      className="size-2 rounded-full"
-                      style={{ backgroundColor: row.protocolColor }}
-                    />
-                    {row.protocol}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right text-[12px]">{row.asset}</TableCell>
-                <TableCell className="text-right text-[12px] text-text-muted">
-                  {row.tvl}
-                </TableCell>
-                <TableCell className="text-right text-[12px] text-accent-green">
-                  {row.apy}
-                </TableCell>
-                <TableCell className="text-right text-[12px] text-[#a5eeff]">
-                  {row.balance}
-                </TableCell>
-              </TableRow>
-            );
-          })}
+          {positions.map((position) => (
+            <TableRow
+              key={position.id}
+              onClick={() => onSelect(position.id)}
+              className={cn(
+                "cursor-pointer border-border-muted/40 hover:bg-bg-secondary/60",
+                selectedId === position.id && "bg-accent-cyan/10",
+              )}
+            >
+              <TableCell>
+                <div className="flex items-center gap-2 text-[12px] tracking-[0.6px]">
+                  <span
+                    className="size-2 rounded-full"
+                    style={{ backgroundColor: position.protocolColor }}
+                  />
+                  {position.protocol}
+                </div>
+              </TableCell>
+              <TableCell className="text-right text-[12px]">{position.asset}</TableCell>
+              <TableCell className="text-right text-[12px] text-text-muted">
+                {position.tvl}
+              </TableCell>
+              <TableCell className="text-right text-[12px] text-accent-green">
+                {position.apy}
+              </TableCell>
+              <TableCell className="text-right text-[12px] text-[#a5eeff]">
+                {position.balance}
+              </TableCell>
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
     </TerminalPanel>
