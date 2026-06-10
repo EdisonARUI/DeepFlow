@@ -20,6 +20,8 @@
     "@deepflow/sdk": "workspace:*",
     "@mysten/dapp-kit-react": "^1.0.3",
     "@mysten/sui": "^2.5.0",
+    "@naviprotocol/lending": "^1.4.6",
+    "buffer": "^6.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "geist": "^1.7.2",
