@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Box } from "lucide-react";
 import { TerminalLabel } from "@/components/terminal-label";
 import { TerminalPanel } from "@/components/terminal-panel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { LiquidityPositionDisplay } from "@/lib/data/liquidity/liquidity-formatters";
+import { useSupplyWithdrawSimulation } from "@/lib/data/liquidity/use-supply-withdraw-simulation";
 import { SupplyPositionForm } from "./supply-position-form";
 import { WithdrawPositionForm } from "./withdraw-position-form";
 
@@ -27,6 +28,27 @@ export function PositionManagement({
   const [supplySlider, setSupplySlider] = useState([0]);
   const [withdrawAmount, setWithdrawAmount] = useState("0.00");
   const [withdrawSlider, setWithdrawSlider] = useState([0]);
+
+  const supplySimulation = useSupplyWithdrawSimulation("supply");
+  const withdrawSimulation = useSupplyWithdrawSimulation("withdraw");
+
+  useEffect(() => {
+    supplySimulation.reset();
+  }, [selectedPosition.id, supplySimulation.reset]);
+
+  useEffect(() => {
+    withdrawSimulation.reset();
+  }, [selectedPosition.id, withdrawSimulation.reset]);
+
+  const supplyStatusMessage =
+    supplySimulation.status === "success"
+      ? "Simulation passed"
+      : supplySimulation.error;
+
+  const withdrawStatusMessage =
+    withdrawSimulation.status === "success"
+      ? "Simulation passed"
+      : withdrawSimulation.error;
 
   return (
     <Tabs defaultValue="supply">
@@ -58,6 +80,16 @@ export function PositionManagement({
             onAmountChange={setSupplyAmount}
             slider={supplySlider}
             onSliderChange={setSupplySlider}
+            onSimulate={() =>
+              void supplySimulation.simulate({
+                position: selectedPosition,
+                amount: supplyAmount,
+              })
+            }
+            isSimulating={supplySimulation.isSimulating}
+            disabled={!supplySimulation.isWalletConnected}
+            simulationStatus={supplySimulation.status}
+            statusMessage={supplyStatusMessage}
           />
         </TabsContent>
         <TabsContent value="withdraw" className="mt-0 p-6">
@@ -69,6 +101,16 @@ export function PositionManagement({
             onAmountChange={setWithdrawAmount}
             slider={withdrawSlider}
             onSliderChange={setWithdrawSlider}
+            onSimulate={() =>
+              void withdrawSimulation.simulate({
+                position: selectedPosition,
+                amount: withdrawAmount,
+              })
+            }
+            isSimulating={withdrawSimulation.isSimulating}
+            disabled={!withdrawSimulation.isWalletConnected}
+            simulationStatus={withdrawSimulation.status}
+            statusMessage={withdrawStatusMessage}
           />
         </TabsContent>
       </TerminalPanel>

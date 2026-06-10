@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 import type { LiquidityPositionDisplay } from "@/lib/data/liquidity/liquidity-formatters";
+import { getSimulationGasFeeLabel } from "@/lib/data/liquidity/simulation-gas-fee-label";
+import type { SimulationStatus } from "@/lib/data/liquidity/use-supply-withdraw-simulation";
 import { PositionAmountInput } from "./position-amount-input";
 import { PositionPercentageSlider } from "./position-percentage-slider";
 import { PositionProtocolBanner } from "./position-protocol-banner";
@@ -15,6 +17,11 @@ type WithdrawPositionFormProps = {
   onAmountChange: (value: string) => void;
   slider: number[];
   onSliderChange: (value: number[]) => void;
+  onSimulate: () => void;
+  isSimulating: boolean;
+  disabled: boolean;
+  simulationStatus: SimulationStatus;
+  statusMessage?: string;
 };
 
 export function WithdrawPositionForm({
@@ -25,11 +32,19 @@ export function WithdrawPositionForm({
   onAmountChange,
   slider,
   onSliderChange,
+  onSimulate,
+  isSimulating,
+  disabled,
+  simulationStatus,
+  statusMessage,
 }: WithdrawPositionFormProps) {
   const protocolAssets = useMemo(
     () => positions.filter((position) => position.protocol === selectedPosition.protocol),
     [positions, selectedPosition.protocol],
   );
+
+  const statusVariant =
+    simulationStatus === "success" ? "success" : simulationStatus === "error" ? "error" : undefined;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
@@ -41,7 +56,7 @@ export function WithdrawPositionForm({
         />
         <PositionAmountInput
           balanceLabel="Pool Balance"
-          balance={selectedPosition.balance}
+          balance={selectedPosition.suppliedBalanceDisplay}
           amount={amount}
           onAmountChange={onAmountChange}
           selectedAsset={selectedPosition.asset}
@@ -58,12 +73,17 @@ export function WithdrawPositionForm({
           { label: "Max Withdraw", value: "75%" },
           {
             label: "Pool Size",
-            value: selectedPosition.balance,
+            value: selectedPosition.suppliedBalanceDisplay,
             valueClassName: "text-accent-green",
           },
-          { label: "Gas Fee", value: "-" },
+          { label: "Gas Fee", value: getSimulationGasFeeLabel(simulationStatus) },
         ]}
         actionLabel="Withdraw"
+        onAction={onSimulate}
+        isLoading={isSimulating}
+        disabled={disabled}
+        statusMessage={statusMessage}
+        statusVariant={statusVariant}
       />
     </div>
   );

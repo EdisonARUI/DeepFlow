@@ -74,7 +74,7 @@ export function DeFiConnectivity({ positions, selectedId, onSelect }: DeFiConnec
                 {position.apy}
               </TableCell>
               <TableCell className="text-right text-[12px] text-[#a5eeff]">
-                {position.balance}
+                {position.suppliedBalanceDisplay}
               </TableCell>
             </TableRow>
           ))}

@@ -12,13 +12,23 @@ type TransactionOverviewPanelProps = {
   rows: TransactionOverviewRow[];
   actionLabel: string;
   onAction?: () => void;
+  isLoading?: boolean;
+  disabled?: boolean;
+  statusMessage?: string;
+  statusVariant?: "success" | "error";
 };
 
 export function TransactionOverviewPanel({
   rows,
   actionLabel,
   onAction,
+  isLoading = false,
+  disabled = false,
+  statusMessage,
+  statusVariant,
 }: TransactionOverviewPanelProps) {
+  const isActionDisabled = disabled || isLoading;
+
   return (
     <div className="flex flex-col justify-between border border-border-default bg-bg-secondary p-4">
       <div>
@@ -33,13 +43,26 @@ export function TransactionOverviewPanel({
             </div>
           ))}
         </dl>
+        {statusMessage && (
+          <p
+            className={cn(
+              "mt-3 text-[11px] tracking-[0.6px]",
+              statusVariant === "success" && "text-accent-green",
+              statusVariant === "error" && "text-destructive",
+              !statusVariant && "text-text-muted",
+            )}
+          >
+            {statusMessage}
+          </p>
+        )}
       </div>
       <Button
         type="button"
         onClick={onAction}
-        className="mt-6 h-10 w-full rounded-none bg-accent-cyan text-[11px] font-bold tracking-[1.1px] text-[var(--text-on-accent)] uppercase hover:bg-accent-cyan/90"
+        disabled={isActionDisabled}
+        className="mt-6 h-10 w-full rounded-none bg-accent-cyan text-[11px] font-bold tracking-[1.1px] text-[var(--text-on-accent)] uppercase hover:bg-accent-cyan/90 disabled:opacity-50"
       >
-        {actionLabel}
+        {isLoading ? "Simulating..." : actionLabel}
       </Button>
     </div>
   );
