@@ -7,9 +7,11 @@ export function mapToLiquidityView(raw: LiquidityPositionRaw): LiquidityPosition
     protocol: raw.protocolLabel,
     protocolColor: raw.protocolColor,
     asset: raw.asset,
+    coinType: raw.coinType,
     tvlUsd: raw.tvlUsd,
     supplyApyBps: raw.supplyApyBps,
-    walletBalance: raw.walletBalance,
+    suppliedBalance: raw.suppliedBalance,
+    walletCoinBalance: raw.walletCoinBalance,
     decimals: raw.decimals,
   };
 }

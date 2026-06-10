@@ -18,9 +18,9 @@ export function formatLiquidityApy(supplyApyBps: number): string {
   return `+${percent.toFixed(1)}%`;
 }
 
-export function formatLiquidityBalance(walletBalance: bigint, decimals: number): string {
+export function formatLiquidityBalance(balance: bigint, decimals: number): string {
   const divisor = 10 ** decimals;
-  const value = Number(walletBalance) / divisor;
+  const value = Number(balance) / divisor;
   return value.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -30,7 +30,8 @@ export function formatLiquidityBalance(walletBalance: bigint, decimals: number):
 export type LiquidityPositionDisplay = LiquidityPositionView & {
   tvl: string;
   apy: string;
-  balance: string;
+  suppliedBalanceDisplay: string;
+  walletCoinBalanceDisplay: string;
 };
 
 export function toLiquidityPositionDisplay(
@@ -40,6 +41,13 @@ export function toLiquidityPositionDisplay(
     ...position,
     tvl: formatLiquidityTvl(position.tvlUsd),
     apy: formatLiquidityApy(position.supplyApyBps),
-    balance: formatLiquidityBalance(position.walletBalance, position.decimals),
+    suppliedBalanceDisplay: formatLiquidityBalance(
+      position.suppliedBalance,
+      position.decimals,
+    ),
+    walletCoinBalanceDisplay: formatLiquidityBalance(
+      position.walletCoinBalance,
+      position.decimals,
+    ),
   };
 }

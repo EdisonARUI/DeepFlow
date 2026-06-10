@@ -3,9 +3,13 @@ export type LiquidityPositionRaw = {
   protocolLabel: string;
   protocolColor: string;
   asset: string;
+  coinType: string;
   supplyApyBps: number;
   tvlUsd: number;
-  walletBalance: bigint;
+  /** NAVI 协议内已 supply 余额（Withdraw 可用） */
+  suppliedBalance: bigint;
+  /** 钱包内该 coinType 的持币余额（Supply 可用） */
+  walletCoinBalance: bigint;
   decimals: number;
 };
 
@@ -14,9 +18,11 @@ export type LiquidityPositionView = {
   protocol: string;
   protocolColor: string;
   asset: string;
+  coinType: string;
   tvlUsd: number | null;
   supplyApyBps: number;
-  walletBalance: bigint;
+  suppliedBalance: bigint;
+  walletCoinBalance: bigint;
   decimals: number;
 };
 

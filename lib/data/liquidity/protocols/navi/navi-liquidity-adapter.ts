@@ -134,9 +134,38 @@ function buildSupplyBalanceMap(
   return balances;
 }
 
+async function buildWalletCoinBalanceMap(
+  ownerAddress: string,
+  pools: Awaited<ReturnType<typeof getPools>>,
+  allowlist: readonly string[],
+): Promise<Map<string, bigint>> {
+  const client = createNaviRpcClient();
+  const filteredPools = pools.filter(
+    (pool) =>
+      pool.market === NAVI_MAIN_MARKET && isAllowedAsset(pool.token.symbol, allowlist),
+  );
+
+  const entries = await Promise.all(
+    filteredPools.map(async (pool) => {
+      try {
+        const { totalBalance } = await client.getBalance({
+          owner: ownerAddress,
+          coinType: pool.suiCoinType,
+        });
+        return [normalizeSymbol(pool.token.symbol), BigInt(totalBalance)] as const;
+      } catch {
+        return [normalizeSymbol(pool.token.symbol), BigInt(0)] as const;
+      }
+    }),
+  );
+
+  return new Map(entries);
+}
+
 function mapPoolsToRows(
   pools: Awaited<ReturnType<typeof getPools>>,
-  balances: Map<string, bigint>,
+  suppliedBalances: Map<string, bigint>,
+  walletCoinBalances: Map<string, bigint>,
   allowlist: readonly string[],
 ): LiquidityPositionRaw[] {
   return pools
@@ -144,16 +173,21 @@ function mapPoolsToRows(
       (pool) =>
         pool.market === NAVI_MAIN_MARKET && isAllowedAsset(pool.token.symbol, allowlist),
     )
-    .map((pool) => ({
-      protocol: NAVI_PROTOCOL_ID,
-      protocolLabel: NAVI_PROTOCOL_LABEL,
-      protocolColor: NAVI_PROTOCOL_COLOR,
-      asset: pool.token.symbol,
-      supplyApyBps: parseApyToBps(pool.supplyIncentiveApyInfo.apy),
-      tvlUsd: parseUsdNumber(pool.poolSupplyValue),
-      walletBalance: balances.get(normalizeSymbol(pool.token.symbol)) ?? BigInt(0),
-      decimals: pool.token.decimals,
-    }));
+    .map((pool) => {
+      const key = normalizeSymbol(pool.token.symbol);
+      return {
+        protocol: NAVI_PROTOCOL_ID,
+        protocolLabel: NAVI_PROTOCOL_LABEL,
+        protocolColor: NAVI_PROTOCOL_COLOR,
+        asset: pool.token.symbol,
+        coinType: pool.suiCoinType,
+        supplyApyBps: parseApyToBps(pool.supplyIncentiveApyInfo.apy),
+        tvlUsd: parseUsdNumber(pool.poolSupplyValue),
+        suppliedBalance: suppliedBalances.get(key) ?? BigInt(0),
+        walletCoinBalance: walletCoinBalances.get(key) ?? BigInt(0),
+        decimals: pool.token.decimals,
+      };
+    });
 }
 
 function sortByAllowlist(
@@ -194,7 +228,8 @@ export class NaviLiquidityAdapter implements LiquidityProtocolAdapter {
       );
     }
 
-    let balances = new Map<string, bigint>();
+    let suppliedBalances = new Map<string, bigint>();
+    let walletCoinBalances = new Map<string, bigint>();
     let walletBalanceWarning: string | undefined;
     let configurationWarning: string | undefined;
 
@@ -205,19 +240,35 @@ export class NaviLiquidityAdapter implements LiquidityProtocolAdapter {
           ...sdkOptions,
           client,
         });
-        balances = buildSupplyBalanceMap(positions, allowlist);
+        suppliedBalances = buildSupplyBalanceMap(positions, allowlist);
       } catch (err) {
         console.warn(
-          "[NaviLiquidityAdapter] getLendingPositions failed, wallet balances default to 0:",
+          "[NaviLiquidityAdapter] getLendingPositions failed, supplied balances default to 0:",
           err,
         );
         walletBalanceWarning =
           "个人 supply 余额暂时无法加载，市场池数据正常展示。";
       }
+
+      try {
+        walletCoinBalances = await buildWalletCoinBalanceMap(
+          ownerAddress,
+          pools,
+          allowlist,
+        );
+      } catch (err) {
+        console.warn(
+          "[NaviLiquidityAdapter] getBalance failed, wallet coin balances default to 0:",
+          err,
+        );
+      }
     }
 
     const mainMarketPools = pools.filter((pool) => pool.market === NAVI_MAIN_MARKET);
-    const rows = sortByAllowlist(mapPoolsToRows(pools, balances, allowlist), allowlist);
+    const rows = sortByAllowlist(
+      mapPoolsToRows(pools, suppliedBalances, walletCoinBalances, allowlist),
+      allowlist,
+    );
 
     if (mainMarketPools.length > 0 && rows.length === 0) {
       configurationWarning =
