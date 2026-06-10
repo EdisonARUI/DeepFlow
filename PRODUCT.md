@@ -149,6 +149,45 @@ MVP 可考虑以下收入方式：
 - 高级 Runtime Monitoring。
 - Pro Runtime Plan。
 
+## Dashboard — Portfolio 页
+
+Portfolio 页是用户资产总览与链上活动查询入口，帮助用户理解资金在钱包与各 DeFi 协议之间的分布与利用率。
+
+### Summary Stats（资产摘要）
+
+四个核心指标：
+
+- **Total Assets**：用户全部资产（钱包余额 + 所有 DeFi 协议内资产），以 USD 估值汇总。
+- **Working Capital**：所有 DeFi 协议内资产（supply / 存款等生息头寸）的 USD 总和。
+- **Idle Capital**：所有钱包内闲置资产（按 coinType 去重，避免多协议行重复统计）的 USD 总和。
+- **Utilization Rate**：`Working Capital / Total Assets × 100%`，反映资金在 DeFi 中的利用率。
+
+### Asset Composition（资产构成）
+
+- 顶部协议筛选：`ALL` / `NAVI` / `SCALLOP` / `CETUS` / `DEEPBOOK`。
+- 饼图展示当前筛选条件下的 **token 分布**（按标的聚合占比与美元值）。
+- `ALL`：DeFi 持仓 + 钱包余额；单协议筛选：仅该协议内 supplied 余额。
+
+### Protocol Exposure（协议敞口）
+
+- Treemap 展示用户在 **NAVI / SCALLOP / CETUS / DEEPBOOK / WALLET** 五类资金桶的 USD 分布。
+- `WALLET` 桶为去重后的钱包余额总和；其余桶为各协议内 supplied 资产。
+
+### Transaction History（交易历史）
+
+- 展示钱包地址最近的链上交易记录，便于用户查询与核对。
+- 支持 `7_DAYS` / `30_DAYS` 时间窗筛选。
+- Live 模式通过 Sui JSON-RPC 查询发送方与接收方交易；类型 best-effort 识别（`SUPPLY` / `WITHDRAW` / `BRIDGE` / `GENERIC`）。
+
+### 数据模式
+
+| 模式 | 说明 |
+|------|------|
+| `mock`（默认） | 使用 `lib/fixtures/` 静态数据演示；不依赖钱包连接。 |
+| `live` | 组合 Liquidity 读路径持仓 + RPC 链上交易；需连接 mainnet 钱包查看个人数据。 |
+
+MVP 使用静态 USD 价表估值，**不作为会计系统**，不保证实时价格精度。
+
 ## 非目标
 
 MVP 不做以下内容：

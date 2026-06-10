@@ -200,7 +200,7 @@ Move 合约用于承载最终资金安全约束。
 - **框架**：Next.js 15（App Router）+ TypeScript
 - **钱包**：@mysten/dapp-kit-react + @mysten/sui（**固定 mainnet**，与 DeFi 数据层一致）
 - **UI**：shadcn/ui（Radix 原语）+ Tailwind CSS
-- **图表**：Recharts（Portfolio 净值曲线、资产分布）
+- **图表**：Recharts（Portfolio 饼图 / Treemap、资产分布）
 - **图标**：Lucide React（实现阶段逐步替换 Figma 导出图标）
 - **字体**：JetBrains Mono（标签/数据）、Geist（品牌标题）
 - **SDK 依赖**：根 `package.json` workspace 引用 `@deepflow/sdk`
@@ -209,7 +209,7 @@ Move 合约用于承载最终资金安全约束。
 
 | 路由 | Figma 节点 | 页面 | SDK 概念映射 |
 |------|-----------|------|-------------|
-| `/portfolio` | `107:343` | 净值、资产分布、操作历史 | `ExecutionResult` 遥测 |
+| `/portfolio` | `107:343` | 资产摘要、协议敞口、交易历史 | `ExecutionResult` 遥测 |
 | `/liquidity` | `1:542` | DeFi 协议表、Supply/Withdraw | `CreditSource` |
 | `/trading` | `1:2` | 交易对、Swap、订单簿、PTB 管线 | `ExecutionIntent` |
 | `/security` | `11:2` | 终点白名单、熔断器、配额、Session | `ExecutionPolicy` |
@@ -250,6 +250,22 @@ LiquidityWorkspace
 `NaviLiquidityAdapter` 仅查询 **Main Market**（`markets: ['main']`，`env: 'prod'`）。池级 APY/TVL 来自 `getPools`（**不依赖钱包连接**）；用户 supply 余额仅在 `owner` 存在时通过 `getLendingPositions` 查询（传入 mainnet JSON-RPC client）。`getPools` 与 `getLendingPositions` 错误处理解耦：池子查询失败才阻断页面；持仓查询失败时降级为 `walletBalance=0` 并通过 `walletBalanceWarning` 非阻断提示。合并后余额为 0 的 pool 仍会展示。
 
 默认标的白名单：`USDC`、`SUIUSDE`、`SUI`、`WAL`、`DEEP`、`XBTC`（symbol 大小写归一化匹配，展示保留 NAVI 原始格式）。
+
+#### Portfolio 读路径数据流（client-only）
+
+```text
+PortfolioWorkspace
+  -> usePortfolio()
+  -> createPortfolioRepository()     # mock | live（复用 NEXT_PUBLIC_DATA_SOURCE）
+  -> MockPortfolioRepository          # fixture 聚合
+  -> LivePortfolioRepository          # 组合 LiquidityRepository + SuiTransactionAdapter
+  -> mapToPortfolioView()             # 摘要 / 饼图 / Treemap / 交易列表
+```
+
+- **mock**：`MOCK_LIQUIDITY_RAW` + `MOCK_DEEPBOOK_RAW` + `MOCK_PORTFOLIO_TRANSACTIONS` + 静态 USD 价表。
+- **live**：复用 `createLiquidityRepository().listPositions()`；交易通过 JSON-RPC `suix_queryTransactionBlocks`（FromAddress + ToAddress 合并去重）。
+- 钱包余额按 `coinType` 去重后计入 Idle Capital，避免多协议行重复统计。
+- USD 估值 MVP 使用 `lib/fixtures/portfolio.ts` 静态价表；缺失价格资产计 $0 并返回 `priceWarning`。
 
 #### Liquidity 写路径（SDK，mainnet 模拟）
 
