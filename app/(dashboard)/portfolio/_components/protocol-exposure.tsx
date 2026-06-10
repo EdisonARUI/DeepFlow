@@ -5,7 +5,7 @@ import { ResponsiveContainer, Treemap } from "recharts";
 import type { TreemapNode } from "recharts/types/chart/Treemap";
 import { TerminalLabel } from "@/components/terminal-label";
 import { TerminalPanel } from "@/components/terminal-panel";
-import { PROTOCOL_EXPOSURE } from "@/lib/mock-data";
+import type { ProtocolExposureItem } from "@/lib/data/portfolio/types";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -14,49 +14,57 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
-function ExposureCell(props: TreemapNode) {
-  const { x, y, width, height, name } = props;
-  const item = PROTOCOL_EXPOSURE.find((entry) => entry.name === name);
+type ProtocolExposureProps = {
+  exposure: ProtocolExposureItem[];
+};
 
-  if (!item || width <= 0 || height <= 0) {
-    return <g />;
-  }
+function createExposureCell(exposure: ProtocolExposureItem[]) {
+  return function ExposureCell(props: TreemapNode) {
+    const { x, y, width, height, name } = props;
+    const item = exposure.find((entry) => entry.name === name);
 
-  const compact = width < 80 || height < 60;
-  const labelColor = item.textColor ?? "#001f25";
+    if (!item || width <= 0 || height <= 0) {
+      return <g />;
+    }
 
-  return (
-    <g>
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        fill={item.color}
-        stroke="rgba(0, 218, 248, 0.2)"
-        strokeWidth={1}
-      />
-      <foreignObject x={x} y={y} width={width} height={height}>
-        <div
-          className="flex h-full flex-col justify-between p-3"
-          style={{ color: labelColor }}
-        >
-          <div className="flex items-start justify-between gap-2 text-[10px] uppercase">
-            <span className={compact ? "truncate opacity-80" : "opacity-80"}>{item.name}</span>
-            {!compact ? <span className="tracking-[0.6px]">{item.percent}%</span> : null}
+    const compact = width < 80 || height < 60;
+    const labelColor = item.textColor ?? "#001f25";
+
+    return (
+      <g>
+        <rect
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          fill={item.color}
+          stroke="rgba(0, 218, 248, 0.2)"
+          strokeWidth={1}
+        />
+        <foreignObject x={x} y={y} width={width} height={height}>
+          <div
+            className="flex h-full flex-col justify-between p-3"
+            style={{ color: labelColor }}
+          >
+            <div className="flex items-start justify-between gap-2 text-[10px] uppercase">
+              <span className={compact ? "truncate opacity-80" : "opacity-80"}>{item.name}</span>
+              {!compact ? <span className="tracking-[0.6px]">{item.percent}%</span> : null}
+            </div>
+            {!compact ? (
+              <span className="text-[18px] leading-7">{currencyFormatter.format(item.value)}</span>
+            ) : (
+              <span className="text-[10px]">{item.percent}%</span>
+            )}
           </div>
-          {!compact ? (
-            <span className="text-[18px] leading-7">{currencyFormatter.format(item.value)}</span>
-          ) : (
-            <span className="text-[10px]">{item.percent}%</span>
-          )}
-        </div>
-      </foreignObject>
-    </g>
-  );
+        </foreignObject>
+      </g>
+    );
+  };
 }
 
-export function ProtocolExposure() {
+export function ProtocolExposure({ exposure }: ProtocolExposureProps) {
+  const ExposureCell = createExposureCell(exposure);
+
   return (
     <TerminalPanel
       className="flex h-full min-h-0 flex-col"
@@ -69,32 +77,38 @@ export function ProtocolExposure() {
       }
     >
       <div className="flex flex-1 flex-col items-center p-8">
-        <div className="h-64 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <Treemap
-              data={PROTOCOL_EXPOSURE}
-              dataKey="value"
-              aspectRatio={4 / 3}
-              stroke="transparent"
-              content={ExposureCell}
-            />
-          </ResponsiveContainer>
-        </div>
-        <div className="mt-8 grid w-full grid-cols-2 gap-4">
-          {PROTOCOL_EXPOSURE.map((item) => (
-            <div key={item.name} className="flex items-center gap-3">
-              <span className="size-2 shrink-0" style={{ backgroundColor: item.color }} />
-              <div>
-                <p className="text-[10px] text-text-muted">
-                  {item.name.charAt(0) + item.name.slice(1).toLowerCase()} ({item.percent}%)
-                </p>
-                <p className="text-[12px] tracking-[0.6px] text-text-primary">
-                  {currencyFormatter.format(item.value)}
-                </p>
-              </div>
+        {exposure.length === 0 ? (
+          <p className="text-sm text-text-muted">No protocol exposure data.</p>
+        ) : (
+          <>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <Treemap
+                  data={exposure}
+                  dataKey="value"
+                  aspectRatio={4 / 3}
+                  stroke="transparent"
+                  content={ExposureCell}
+                />
+              </ResponsiveContainer>
             </div>
-          ))}
-        </div>
+            <div className="mt-8 grid w-full grid-cols-2 gap-4">
+              {exposure.map((item) => (
+                <div key={item.name} className="flex items-center gap-3">
+                  <span className="size-2 shrink-0" style={{ backgroundColor: item.color }} />
+                  <div>
+                    <p className="text-[10px] text-text-muted">
+                      {item.name.charAt(0) + item.name.slice(1).toLowerCase()} ({item.percent}%)
+                    </p>
+                    <p className="text-[12px] tracking-[0.6px] text-text-primary">
+                      {currencyFormatter.format(item.value)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </TerminalPanel>
   );

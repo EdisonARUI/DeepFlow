@@ -1,5 +1,5 @@
 import { Landmark } from "lucide-react";
-import { PORTFOLIO_SUMMARY } from "@/lib/mock-data";
+import type { PortfolioSummaryView } from "@/lib/data/portfolio/types";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -8,34 +8,38 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
 
-const STATS = [
-  {
-    label: "TOTAL_ASSETS",
-    value: currencyFormatter.format(PORTFOLIO_SUMMARY.totalAssets),
-    valueClassName: "text-accent-green",
-    icon: Landmark,
-  },
-  {
-    label: "WORKING_CAPITAL",
-    value: currencyFormatter.format(PORTFOLIO_SUMMARY.workingCapital),
-    valueClassName: "text-accent-cyan",
-  },
-  {
-    label: "IDLE_CAPITAL",
-    value: currencyFormatter.format(PORTFOLIO_SUMMARY.idleCapital),
-    valueClassName: "text-text-primary",
-  },
-  {
-    label: "UTILIZATION_RATE",
-    value: `${PORTFOLIO_SUMMARY.utilizationRate}%`,
-    valueClassName: "text-accent-orange",
-  },
-] as const;
+type PortfolioSummaryStatsProps = {
+  summary: PortfolioSummaryView;
+};
 
-export function PortfolioSummaryStats() {
+export function PortfolioSummaryStats({ summary }: PortfolioSummaryStatsProps) {
+  const stats = [
+    {
+      label: "TOTAL_ASSETS",
+      value: currencyFormatter.format(summary.totalAssets),
+      valueClassName: "text-accent-green",
+      icon: Landmark,
+    },
+    {
+      label: "WORKING_CAPITAL",
+      value: currencyFormatter.format(summary.workingCapital),
+      valueClassName: "text-accent-cyan",
+    },
+    {
+      label: "IDLE_CAPITAL",
+      value: currencyFormatter.format(summary.idleCapital),
+      valueClassName: "text-text-primary",
+    },
+    {
+      label: "UTILIZATION_RATE",
+      value: `${summary.utilizationRate}%`,
+      valueClassName: "text-accent-orange",
+    },
+  ] as const;
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {STATS.map((stat) => (
+      {stats.map((stat) => (
         <div
           key={stat.label}
           className="relative overflow-hidden border border-border-default bg-bg-panel px-5 py-5"

@@ -7,7 +7,8 @@ import { TerminalLabel } from "@/components/terminal-label";
 import { TerminalPanel } from "@/components/terminal-panel";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ASSET_ALLOCATION_BY_FILTER, PROTOCOL_FILTERS } from "@/lib/mock-data";
+import type { AssetAllocationItem, ProtocolFilter } from "@/lib/data/portfolio/types";
+import { PROTOCOL_FILTERS } from "@/lib/data/portfolio/types";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -16,9 +17,14 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
-export function AssetComposition() {
-  const [filter, setFilter] = useState<(typeof PROTOCOL_FILTERS)[number]>("ALL");
-  const allocation = ASSET_ALLOCATION_BY_FILTER[filter];
+type AssetCompositionProps = {
+  allocationByFilter: Record<ProtocolFilter, AssetAllocationItem[]>;
+  onRefresh?: () => void;
+};
+
+export function AssetComposition({ allocationByFilter, onRefresh }: AssetCompositionProps) {
+  const [filter, setFilter] = useState<ProtocolFilter>("ALL");
+  const allocation = allocationByFilter[filter];
 
   return (
     <TerminalPanel
@@ -26,7 +32,13 @@ export function AssetComposition() {
       contentClassName="flex min-h-0 flex-1 flex-col p-0"
       title={<TerminalLabel className="text-accent-green">ASSET_COMPOSITION</TerminalLabel>}
       actions={
-        <Button variant="ghost" size="icon-sm" className="text-accent-cyan">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="text-accent-cyan"
+          onClick={onRefresh}
+          disabled={!onRefresh}
+        >
           <RotateCw className="size-4" />
         </Button>
       }
@@ -49,43 +61,49 @@ export function AssetComposition() {
         ))}
       </div>
       <div className="flex flex-1 flex-col items-center gap-8 p-8">
-        <div className="relative size-48">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={allocation}
-                dataKey="percent"
-                nameKey="name"
-                innerRadius={58}
-                outerRadius={80}
-                stroke="none"
-              >
-                {allocation.map((entry) => (
-                  <Cell key={entry.name} fill={entry.color} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-[10px] text-accent-cyan">ASSET_HEALTH</span>
-            <span className="text-base font-bold text-text-primary">OPTIMAL</span>
-          </div>
-        </div>
-        <div className="grid w-full grid-cols-2 gap-4">
-          {allocation.map((item) => (
-            <div key={item.name} className="flex items-center gap-3">
-              <span className="size-2 shrink-0" style={{ backgroundColor: item.color }} />
-              <div>
-                <p className="text-[10px] text-text-muted">
-                  {item.name} ({item.percent}%)
-                </p>
-                <p className="text-[12px] tracking-[0.6px] text-text-primary">
-                  {currencyFormatter.format(item.value)}
-                </p>
+        {allocation.length === 0 ? (
+          <p className="text-sm text-text-muted">No assets for this filter.</p>
+        ) : (
+          <>
+            <div className="relative size-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={allocation}
+                    dataKey="percent"
+                    nameKey="name"
+                    innerRadius={58}
+                    outerRadius={80}
+                    stroke="none"
+                  >
+                    {allocation.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-[10px] text-accent-cyan">ASSET_HEALTH</span>
+                <span className="text-base font-bold text-text-primary">OPTIMAL</span>
               </div>
             </div>
-          ))}
-        </div>
+            <div className="grid w-full grid-cols-2 gap-4">
+              {allocation.map((item) => (
+                <div key={item.name} className="flex items-center gap-3">
+                  <span className="size-2 shrink-0" style={{ backgroundColor: item.color }} />
+                  <div>
+                    <p className="text-[10px] text-text-muted">
+                      {item.name} ({item.percent}%)
+                    </p>
+                    <p className="text-[12px] tracking-[0.6px] text-text-primary">
+                      {currencyFormatter.format(item.value)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </TerminalPanel>
   );

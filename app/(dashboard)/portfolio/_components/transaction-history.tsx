@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { TerminalLabel } from "@/components/terminal-label";
 import { TerminalPanel } from "@/components/terminal-panel";
 import { StatusBadge } from "@/components/status-badge";
@@ -14,13 +13,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { TRANSACTIONS } from "@/lib/mock-data";
+import type { PortfolioTransactionView } from "@/lib/data/portfolio/types";
 
 const TIMEFRAMES = ["7_DAYS", "30_DAYS"] as const;
+export type TransactionTimeframe = (typeof TIMEFRAMES)[number];
 
-export function TransactionHistory() {
-  const [timeframe, setTimeframe] = useState<(typeof TIMEFRAMES)[number]>("30_DAYS");
+type TransactionHistoryProps = {
+  transactions: PortfolioTransactionView[];
+  timeframe: TransactionTimeframe;
+  onTimeframeChange: (timeframe: TransactionTimeframe) => void;
+};
 
+export function TransactionHistory({
+  transactions,
+  timeframe,
+  onTimeframeChange,
+}: TransactionHistoryProps) {
   return (
     <TerminalPanel
       className="col-span-full"
@@ -33,7 +41,7 @@ export function TransactionHistory() {
               key={tf}
               variant="outline"
               size="sm"
-              onClick={() => setTimeframe(tf)}
+              onClick={() => onTimeframeChange(tf)}
               className={cn(
                 "h-auto rounded-none border-border-default px-2.5 py-0.5 text-[12px] tracking-[0.6px] uppercase",
                 timeframe === tf
@@ -64,34 +72,48 @@ export function TransactionHistory() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {TRANSACTIONS.map((row) => (
-            <TableRow key={row.txHash} className="border-border-muted/40">
-              <TableCell className="text-[12px] text-text-primary/70">{row.date}</TableCell>
-              <TableCell className="text-[12px] font-bold text-text-primary uppercase">
-                {row.type}
-              </TableCell>
-              <TableCell className="text-[12px]">{row.asset}</TableCell>
-              <TableCell
-                className={cn(
-                  "text-[12px]",
-                  row.amount.startsWith("+") ? "text-accent-cyan" : "text-accent-orange",
-                )}
-              >
-                {row.amount}
-              </TableCell>
-              <TableCell>
-                <StatusBadge
-                  variant={row.status === "COMPLETED" ? "completed" : "pending"}
-                  dot
-                >
-                  {row.status}
-                </StatusBadge>
-              </TableCell>
-              <TableCell className="text-right text-[12px] text-text-primary/50">
-                {row.txHash}
+          {transactions.length === 0 ? (
+            <TableRow className="border-border-muted/40">
+              <TableCell colSpan={6} className="text-center text-sm text-text-muted">
+                No transactions in this timeframe.
               </TableCell>
             </TableRow>
-          ))}
+          ) : (
+            transactions.map((row) => (
+              <TableRow key={`${row.txHash}-${row.date}`} className="border-border-muted/40">
+                <TableCell className="text-[12px] text-text-primary/70">{row.date}</TableCell>
+                <TableCell className="text-[12px] font-bold text-text-primary uppercase">
+                  {row.type}
+                </TableCell>
+                <TableCell className="text-[12px]">{row.asset}</TableCell>
+                <TableCell
+                  className={cn(
+                    "text-[12px]",
+                    row.amount.startsWith("+") ? "text-accent-cyan" : "text-accent-orange",
+                  )}
+                >
+                  {row.amount}
+                </TableCell>
+                <TableCell>
+                  <StatusBadge
+                    variant={
+                      row.status === "COMPLETED"
+                        ? "completed"
+                        : row.status === "FAILED"
+                          ? "pending"
+                          : "pending"
+                    }
+                    dot
+                  >
+                    {row.status}
+                  </StatusBadge>
+                </TableCell>
+                <TableCell className="text-right text-[12px] text-text-primary/50">
+                  {row.txHash}
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
     </TerminalPanel>
