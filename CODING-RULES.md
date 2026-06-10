@@ -46,9 +46,10 @@ app/(dashboard)/
   portfolio/
     page.tsx
     _components/
-      net-worth-chart.tsx
-      asset-distribution.tsx
-      protocol-actions-history.tsx
+      portfolio-summary-stats.tsx
+      asset-composition.tsx
+      protocol-exposure.tsx
+      transaction-history.tsx
 components/          # 仅跨页共享
   app-shell/
   ui/
