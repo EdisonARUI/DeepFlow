@@ -211,7 +211,7 @@ Move 合约用于承载最终资金安全约束。
 |------|-----------|------|-------------|
 | `/portfolio` | `107:343` | 资产摘要、协议敞口、交易历史 | `ExecutionResult` 遥测 |
 | `/liquidity` | `1:542` | DeFi 协议表、Supply/Withdraw | `CreditSource` |
-| `/trading` | `1:2` | 交易对、Swap、订单簿、PTB 管线 | `ExecutionIntent` |
+| `/trading` | `1:2` | 交易对、Swap、历史订单、PTB 管线 | `ExecutionIntent` |
 | `/security` | `11:2` | 终点白名单、熔断器、配额、Session | `ExecutionPolicy` |
 
 四页共享 **AppShell**：左侧 256px 侧栏、顶栏面包屑（`DEEPFLOW_TERMINAL / {SECTION}`）、右上角 dApp Kit `ConnectButton`。
@@ -266,6 +266,25 @@ PortfolioWorkspace
 - **live**：复用 `createLiquidityRepository().listPositions()`；交易通过 JSON-RPC `suix_queryTransactionBlocks`（FromAddress + ToAddress 合并去重）。
 - 钱包余额按 `coinType` 去重后计入 Idle Capital，避免多协议行重复统计。
 - USD 估值 MVP 使用 `lib/fixtures/portfolio.ts` 静态价表；缺失价格资产计 $0 并返回 `priceWarning`。
+
+#### Trading 读路径数据流（client-only）
+
+```text
+TradingWorkspace
+  -> useTradingMarkets() / useDeepbookOrders() / useTradeSimulation()
+  -> createTradingRepository()           # mock | live（复用 NEXT_PUBLIC_DATA_SOURCE）
+  -> MockTradingRepository | LiveTradingRepository
+  -> DeepbookTradingAdapter              # @mysten/deepbook-v3 client extension
+  -> map-to-trading-view()
+  -> useLiquidityPositions()             # DeFi credit source supplied 余额
+```
+
+- **行情 / 报价**：`client.deepbook.midPrice`、`getQuoteQuantityOutInputFee` / `getBaseQuantityOutInputFee`。
+- **历史订单**：`getBalanceManagerIds` + DeepBook Indexer `/orders/:pool/:balance_manager_id`。
+- **写路径模拟**：Dashboard 调用 `@deepflow/sdk/trade` 的 `simulateTrade`（策略校验 + RoutePlan + mock PTB）；DeepBook 报价由 adapter 注入 `DeepbookQuoteInput`，SDK 不直接依赖 `@mysten/deepbook-v3`。
+- **MVP 限制**：Execute 仅模拟，不 `signAndExecuteTransaction`；完整原子 PTB（NAVI withdraw + DeepBook swap + redeposit）待后续迭代。
+
+DeepBook 客户端工厂：`lib/sui/deepbook-client.ts`（基于 `createSuiGrpcClient().$extend(deepbook({ address }))`）。
 
 #### Liquidity 写路径（SDK，mainnet 模拟）
 
