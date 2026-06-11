@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { ArrowDownUp, Zap } from "lucide-react";
 import { TerminalLabel } from "@/components/terminal-label";
 import { TerminalPanel } from "@/components/terminal-panel";
@@ -13,7 +13,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { MarketPair } from "@/lib/mock-data";
+import type { TradeQuoteView, TradingMarketView } from "@/lib/data/trading/types";
+import type { TradeSimulationStatus } from "@/lib/data/trading/use-trade-simulation";
+import { formatLiquidityBalance } from "@/lib/data/liquidity/liquidity-formatters";
 import {
   computeToAmount,
   formatBalance,
@@ -21,25 +23,59 @@ import {
 } from "./trading-utils";
 
 type SwapWidgetProps = {
-  pairData: MarketPair;
+  market: TradingMarketView;
   isReversed: boolean;
   onToggleDirection: () => void;
+  fromAmount: string;
+  onFromAmountChange: (value: string) => void;
+  creditBalance?: {
+    asset: string;
+    suppliedBalance: bigint;
+    decimals: number;
+  };
+  quote: TradeQuoteView | null;
+  onExecute: () => void;
+  executeStatus: TradeSimulationStatus;
+  executeError?: string;
+  creditSourceLabel?: string;
 };
 
 export function SwapWidget({
-  pairData,
+  market,
   isReversed,
   onToggleDirection,
+  fromAmount,
+  onFromAmountChange,
+  creditBalance,
+  quote,
+  onExecute,
+  executeStatus,
+  executeError,
+  creditSourceLabel = "NAVI",
 }: SwapWidgetProps) {
-  const [fromAmount, setFromAmount] = useState("100.00");
-
-  const { from, to, fromBalance, toBalance, displayRate } = useMemo(
-    () => getSwapAssets(pairData, isReversed),
-    [pairData, isReversed],
+  const { from, to, displayRate } = useMemo(
+    () => getSwapAssets(market, isReversed),
+    [market, isReversed],
   );
 
+  const fromBalanceHuman = creditBalance
+    ? Number(creditBalance.suppliedBalance) / 10 ** creditBalance.decimals
+    : 0;
+
   const parsedFromAmount = parseFloat(fromAmount) || 0;
-  const toAmount = computeToAmount(parsedFromAmount, pairData, isReversed);
+  const toAmount = computeToAmount(
+    parsedFromAmount,
+    market,
+    isReversed,
+    quote?.estimatedOutput,
+  );
+
+  const rateLabel =
+    quote && parsedFromAmount > 0
+      ? `1 ${from} = ${(quote.estimatedOutput / parsedFromAmount).toFixed(4)} ${to}`
+      : `1 ${from} = ${displayRate.toFixed(4)} ${to}`;
+
+  const isExecuting = executeStatus === "simulating";
 
   return (
     <TerminalPanel
@@ -47,17 +83,23 @@ export function SwapWidget({
       contentClassName="flex flex-col gap-4 p-6"
       title={<TerminalLabel>SWAP_WIDGET</TerminalLabel>}
     >
+      <div className="text-[11px] text-text-muted uppercase">
+        Credit Source: {creditSourceLabel}
+      </div>
       <div className="space-y-2">
         <div className="flex justify-between text-[11px] text-text-muted uppercase">
           <span>From</span>
           <span>
-            Balance: {formatBalance(fromBalance)} {from}
+            Balance:{" "}
+            {creditBalance
+              ? `${formatLiquidityBalance(creditBalance.suppliedBalance, creditBalance.decimals)} ${from}`
+              : `${formatBalance(fromBalanceHuman)} ${from}`}
           </span>
         </div>
         <div className="flex items-center gap-3 border border-border-default bg-bg-secondary p-4">
           <Input
             value={fromAmount}
-            onChange={(e) => setFromAmount(e.target.value)}
+            onChange={(e) => onFromAmountChange(e.target.value)}
             className="h-auto flex-1 rounded-none border-0 bg-transparent p-0 text-3xl shadow-none focus-visible:ring-0"
           />
           <Select value={from.toLowerCase()} disabled>
@@ -65,11 +107,11 @@ export function SwapWidget({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={pairData.baseAsset.toLowerCase()}>
-                {pairData.baseAsset}
+              <SelectItem value={market.baseAsset.toLowerCase()}>
+                {market.baseAsset}
               </SelectItem>
-              <SelectItem value={pairData.quoteAsset.toLowerCase()}>
-                {pairData.quoteAsset}
+              <SelectItem value={market.quoteAsset.toLowerCase()}>
+                {market.quoteAsset}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -88,14 +130,12 @@ export function SwapWidget({
       <div className="space-y-2">
         <div className="flex justify-between text-[11px] text-text-muted uppercase">
           <span>To</span>
-          <span>
-            Balance: {formatBalance(toBalance)} {to}
-          </span>
+          <span>{to}</span>
         </div>
         <div className="flex items-center gap-3 border border-border-default bg-bg-secondary p-4">
           <Input
             readOnly
-            value={toAmount > 0 ? toAmount.toFixed(2) : "0.00"}
+            value={toAmount > 0 ? toAmount.toFixed(4) : "0.00"}
             className="h-auto flex-1 rounded-none border-0 bg-transparent p-0 text-3xl shadow-none focus-visible:ring-0"
           />
           <Select value={to.toLowerCase()} disabled>
@@ -103,11 +143,11 @@ export function SwapWidget({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={pairData.baseAsset.toLowerCase()}>
-                {pairData.baseAsset}
+              <SelectItem value={market.baseAsset.toLowerCase()}>
+                {market.baseAsset}
               </SelectItem>
-              <SelectItem value={pairData.quoteAsset.toLowerCase()}>
-                {pairData.quoteAsset}
+              <SelectItem value={market.quoteAsset.toLowerCase()}>
+                {market.quoteAsset}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -116,18 +156,27 @@ export function SwapWidget({
       <dl className="space-y-2 border-t border-border-muted/40 pt-4 text-[12px] tracking-[0.6px]">
         <div className="flex justify-between">
           <dt className="text-text-muted">Rate</dt>
-          <dd>
-            1 {from} = {displayRate.toFixed(4)} {to}
-          </dd>
+          <dd>{rateLabel}</dd>
         </div>
         <div className="flex justify-between">
           <dt className="text-text-muted">Fee</dt>
-          <dd className="text-accent-cyan">~0.002 DEEP</dd>
+          <dd className="text-accent-cyan">{quote?.feeLabel ?? "—"}</dd>
         </div>
       </dl>
-      <Button className="mt-auto h-12 w-full rounded-none bg-accent-cyan text-sm font-bold tracking-[1.1px] text-[var(--text-on-accent)] uppercase hover:bg-accent-cyan/90">
+      {executeError && (
+        <p className="text-[12px] text-destructive">{executeError}</p>
+      )}
+      {executeStatus === "success" && (
+        <p className="text-[12px] text-accent-green">模拟通过，PTB 管线已更新</p>
+      )}
+      <Button
+        type="button"
+        disabled={isExecuting}
+        onClick={onExecute}
+        className="mt-auto h-12 w-full rounded-none bg-accent-cyan text-sm font-bold tracking-[1.1px] text-[var(--text-on-accent)] uppercase hover:bg-accent-cyan/90"
+      >
         <Zap className="size-4" />
-        Execute
+        {isExecuting ? "Simulating…" : "Execute"}
       </Button>
     </TerminalPanel>
   );

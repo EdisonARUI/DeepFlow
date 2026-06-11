@@ -1,4 +1,4 @@
-import type { MarketPair } from "@/lib/mock-data";
+import type { TradingMarketView } from "@/lib/data/trading/types";
 
 export function formatBalance(value: number) {
   return value.toLocaleString("en-US", {
@@ -7,21 +7,21 @@ export function formatBalance(value: number) {
   });
 }
 
-export function getSwapAssets(pair: MarketPair, isReversed: boolean) {
-  const from = isReversed ? pair.quoteAsset : pair.baseAsset;
-  const to = isReversed ? pair.baseAsset : pair.quoteAsset;
-  const fromBalance = isReversed ? pair.quoteBalance : pair.baseBalance;
-  const toBalance = isReversed ? pair.baseBalance : pair.quoteBalance;
-  const displayRate = isReversed ? 1 / pair.rate : pair.rate;
+export function getSwapAssets(market: TradingMarketView, isReversed: boolean) {
+  const from = isReversed ? market.quoteAsset : market.baseAsset;
+  const to = isReversed ? market.baseAsset : market.quoteAsset;
+  const displayRate = isReversed ? 1 / market.rate : market.rate;
 
-  return { from, to, fromBalance, toBalance, displayRate };
+  return { from, to, displayRate };
 }
 
 export function computeToAmount(
   fromAmount: number,
-  pair: MarketPair,
+  market: TradingMarketView,
   isReversed: boolean,
+  quoteOutput?: number | null,
 ) {
   if (!Number.isFinite(fromAmount) || fromAmount <= 0) return 0;
-  return isReversed ? fromAmount / pair.rate : fromAmount * pair.rate;
+  if (quoteOutput != null && quoteOutput > 0) return quoteOutput;
+  return isReversed ? fromAmount / market.rate : fromAmount * market.rate;
 }

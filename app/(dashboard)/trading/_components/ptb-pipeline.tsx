@@ -1,9 +1,16 @@
+"use client";
+
 import { Network } from "lucide-react";
 import { TerminalLabel } from "@/components/terminal-label";
 import { TerminalPanel } from "@/components/terminal-panel";
-import { PTB_STEPS } from "@/lib/mock-data";
+import { cn } from "@/lib/utils";
+import type { PtbStepView } from "@/lib/data/trading/types";
 
-export function PtbPipeline() {
+type PtbPipelineProps = {
+  steps: PtbStepView[];
+};
+
+export function PtbPipeline({ steps }: PtbPipelineProps) {
   return (
     <TerminalPanel
       contentClassName="py-8"
@@ -15,18 +22,44 @@ export function PtbPipeline() {
       }
     >
       <div className="flex items-center justify-between px-8">
-        {PTB_STEPS.map((step, index) => (
-          <div key={step} className="flex flex-1 items-center">
+        {steps.map((step, index) => (
+          <div key={step.id} className="flex flex-1 items-center">
             <div className="flex flex-col items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-full border-2 border-accent-cyan">
-                <span className="size-2 rounded-full bg-accent-cyan" />
+              <div
+                className={cn(
+                  "flex size-10 items-center justify-center rounded-full border-2",
+                  step.status === "done" && "border-accent-cyan bg-accent-cyan/20",
+                  step.status === "active" && "border-accent-cyan animate-pulse",
+                  step.status === "error" && "border-destructive",
+                  step.status === "pending" && "border-border-default",
+                )}
+              >
+                <span
+                  className={cn(
+                    "size-2 rounded-full",
+                    step.status === "done" && "bg-accent-cyan",
+                    step.status === "active" && "bg-accent-cyan",
+                    step.status === "error" && "bg-destructive",
+                    step.status === "pending" && "bg-border-default",
+                  )}
+                />
               </div>
-              <span className="text-[11px] tracking-[0.6px] text-accent-cyan uppercase">
-                [{step}]
+              <span
+                className={cn(
+                  "text-[11px] tracking-[0.6px] uppercase",
+                  step.status === "error" ? "text-destructive" : "text-accent-cyan",
+                )}
+              >
+                [{step.label}]
               </span>
             </div>
-            {index < PTB_STEPS.length - 1 && (
-              <div className="mx-2 h-px flex-1 bg-border-default" />
+            {index < steps.length - 1 && (
+              <div
+                className={cn(
+                  "mx-2 h-px flex-1",
+                  step.status === "done" ? "bg-accent-cyan/60" : "bg-border-default",
+                )}
+              />
             )}
           </div>
         ))}

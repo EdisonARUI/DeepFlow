@@ -5,14 +5,21 @@ import { TerminalLabel } from "@/components/terminal-label";
 import { TerminalPanel } from "@/components/terminal-panel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { MARKET_PAIRS } from "@/lib/mock-data";
+import type { TradingMarketView } from "@/lib/data/trading/types";
 
 type MarketPairsProps = {
-  selectedPair: string;
-  onSelectPair: (pair: string) => void;
+  markets: TradingMarketView[];
+  selectedPoolKey: string;
+  onSelectPoolKey: (poolKey: string) => void;
+  isLoading?: boolean;
 };
 
-export function MarketPairs({ selectedPair, onSelectPair }: MarketPairsProps) {
+export function MarketPairs({
+  markets,
+  selectedPoolKey,
+  onSelectPoolKey,
+  isLoading,
+}: MarketPairsProps) {
   return (
     <TerminalPanel
       className="h-full"
@@ -25,22 +32,26 @@ export function MarketPairs({ selectedPair, onSelectPair }: MarketPairsProps) {
       }
     >
       <ScrollArea className="h-[680px]">
-        {MARKET_PAIRS.map((pair) => (
-          <button
-            key={pair.pair}
-            type="button"
-            onClick={() => onSelectPair(pair.pair)}
-            className={cn(
-              "flex w-full items-center justify-between border-b border-border-muted/40 px-3 py-3 text-left text-[12px] tracking-[0.6px]",
-              selectedPair === pair.pair
-                ? "border-l-2 border-l-accent-cyan bg-accent-cyan/10"
-                : "hover:bg-bg-panel-header/50",
-            )}
-          >
-            <span>{pair.pair}</span>
-            <span className="text-text-muted">{pair.price}</span>
-          </button>
-        ))}
+        {isLoading && (
+          <p className="px-3 py-3 text-[12px] text-text-muted">Loading markets…</p>
+        )}
+        {!isLoading &&
+          markets.map((market) => (
+            <button
+              key={market.poolKey}
+              type="button"
+              onClick={() => onSelectPoolKey(market.poolKey)}
+              className={cn(
+                "flex w-full items-center justify-between border-b border-border-muted/40 px-3 py-3 text-left text-[12px] tracking-[0.6px]",
+                selectedPoolKey === market.poolKey
+                  ? "border-l-2 border-l-accent-cyan bg-accent-cyan/10"
+                  : "hover:bg-bg-panel-header/50",
+              )}
+            >
+              <span>{market.pair}</span>
+              <span className="text-text-muted">{market.price}</span>
+            </button>
+          ))}
       </ScrollArea>
     </TerminalPanel>
   );

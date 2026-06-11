@@ -1,10 +1,22 @@
+"use client";
+
 import { FileText } from "lucide-react";
 import { TerminalPanel } from "@/components/terminal-panel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { ORDER_BOOK } from "@/lib/mock-data";
+import type { DeepbookOrderView } from "@/lib/data/trading/types";
 
-export function DeepbookOrders() {
+type DeepbookOrdersProps = {
+  orders: DeepbookOrderView[];
+  isLoading?: boolean;
+  emptyMessage?: string;
+};
+
+export function DeepbookOrders({
+  orders,
+  isLoading,
+  emptyMessage,
+}: DeepbookOrdersProps) {
   return (
     <TerminalPanel
       className="h-full"
@@ -19,20 +31,30 @@ export function DeepbookOrders() {
       }
     >
       <ScrollArea className="h-[680px]">
-        {ORDER_BOOK.map((order, i) => (
-          <div
-            key={`${order.side}-${order.amount}-${i}`}
-            className={cn(
-              "flex items-center justify-between border-b border-border-muted/30 px-3 py-2 text-[12px] tracking-[0.6px]",
-              order.side === "BUY" ? "text-accent-green" : "text-destructive",
-            )}
-          >
-            <span>
-              {order.side} {order.pair}
-            </span>
-            <span>{order.amount}</span>
-          </div>
-        ))}
+        {isLoading && (
+          <p className="px-3 py-3 text-[12px] text-text-muted">Loading orders…</p>
+        )}
+        {!isLoading && orders.length === 0 && (
+          <p className="px-3 py-3 text-[12px] text-text-muted">
+            {emptyMessage ?? "暂无历史订单"}
+          </p>
+        )}
+        {!isLoading &&
+          orders.map((order) => (
+            <div
+              key={order.id}
+              className={cn(
+                "flex items-center justify-between border-b border-border-muted/30 px-3 py-2 text-[12px] tracking-[0.6px]",
+                order.side === "BUY" ? "text-accent-green" : "text-destructive",
+              )}
+            >
+              <span>
+                {order.side} {order.pair}{" "}
+                <span className="text-text-muted">[{order.status}]</span>
+              </span>
+              <span>{order.amount}</span>
+            </div>
+          ))}
       </ScrollArea>
     </TerminalPanel>
   );
