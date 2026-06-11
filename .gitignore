@@ -29,7 +29,7 @@ next-env.d.ts
 # testing
 /coverage
 
-# harness
-SESSION-HANDSOFF.md
 
 /sdk
+
+/outputs
