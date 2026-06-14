@@ -6,6 +6,7 @@ import type {
   ListLiquidityPositionsParams,
   ListLiquidityPositionsResult,
 } from "../types";
+import { parseNaviAprPercentToBps } from "./navi-apy";
 import { createNaviRpcClient } from "./navi-rpc-client";
 
 const NAVI_PROTOCOL_ID = "navi" as const;
@@ -83,18 +84,6 @@ function isAllowedAsset(symbol: string, allowlist: readonly string[]): boolean {
 function parseUsdNumber(value: string): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
-}
-
-function parseApyToBps(apy: string): number {
-  const n = Number(apy);
-  if (!Number.isFinite(n)) return 0;
-
-  // Heuristic:
-  // - 0.081  => 8.1% => 810 bps
-  // - 8.1    => 8.1% => 810 bps
-  if (n <= 1) return Math.round(n * 10_000);
-  if (n <= 100) return Math.round(n * 100);
-  return Math.round(n);
 }
 
 function parseBigIntSafe(value: string): bigint {
@@ -181,7 +170,7 @@ function mapPoolsToRows(
         protocolColor: NAVI_PROTOCOL_COLOR,
         asset: pool.token.symbol,
         coinType: pool.suiCoinType,
-        supplyApyBps: parseApyToBps(pool.supplyIncentiveApyInfo.apy),
+        supplyApyBps: parseNaviAprPercentToBps(pool.supplyIncentiveApyInfo.apy),
         tvlUsd: parseUsdNumber(pool.poolSupplyValue),
         suppliedBalance: suppliedBalances.get(key) ?? BigInt(0),
         walletCoinBalance: walletCoinBalances.get(key) ?? BigInt(0),
