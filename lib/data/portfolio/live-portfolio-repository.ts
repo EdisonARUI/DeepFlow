@@ -1,5 +1,9 @@
 import { createLiquidityRepository } from "@/lib/data/liquidity/create-liquidity-repository";
-import { MOCK_TOKEN_USD_PRICES } from "@/lib/fixtures/portfolio";
+import {
+  fetchDeepbookUsdPrices,
+  mergePriceWarnings,
+  uniqueAssetsFromPositions,
+} from "@/lib/data/pricing/deepbook-usd-price-oracle";
 import { mapToPortfolioView } from "./map-to-portfolio-view";
 import type { ListPortfolioParams, PortfolioRepository } from "./portfolio-repository";
 import { listRecentTransactions } from "./sui-transaction-adapter";
@@ -14,11 +18,17 @@ export class LivePortfolioRepository implements PortfolioRepository {
       listRecentTransactions({ owner: params.owner, days }),
     ]);
 
+    const assets = uniqueAssetsFromPositions(liquidityResult.positions);
+    const { prices, warning: priceFetchWarning } = await fetchDeepbookUsdPrices(assets);
+
     return mapToPortfolioView({
       positions: liquidityResult.positions,
       transactions: transactionResult.transactions,
-      usdPrices: MOCK_TOKEN_USD_PRICES,
-      priceWarning: liquidityResult.configurationWarning,
+      usdPrices: prices,
+      priceWarning: mergePriceWarnings(
+        priceFetchWarning,
+        liquidityResult.configurationWarning,
+      ),
       transactionWarning: transactionResult.warning,
     });
   }
