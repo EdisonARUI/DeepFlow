@@ -71,7 +71,7 @@ export function SupplyPositionForm({
       <TransactionOverviewPanel
         rows={[
           { label: "Max supply", value: "75%" },
-          { label: "Supply APR", value: selectedPosition.apy, valueClassName: "text-accent-green" },
+          { label: "Supply APR", value: selectedPosition.apr, valueClassName: "text-accent-green" },
           { label: "Gas fee", value: getSimulationGasFeeLabel(simulationStatus) },
         ]}
         actionLabel="Supply"

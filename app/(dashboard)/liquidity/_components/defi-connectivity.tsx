@@ -34,7 +34,7 @@ export function DeFiConnectivity({ positions, selectedId, onSelect }: DeFiConnec
       <Table>
         <TableHeader>
           <TableRow className="border-border-default hover:bg-transparent">
-            {["PROTOCOL", "ASSET", "TVL", "APY", "BALANCE"].map((col, i) => (
+            {["PROTOCOL", "ASSET", "TOTAL SUPPLY", "APR", "BALANCE"].map((col, i) => (
               <TableHead
                 key={col}
                 className={cn(
@@ -68,10 +68,10 @@ export function DeFiConnectivity({ positions, selectedId, onSelect }: DeFiConnec
               </TableCell>
               <TableCell className="text-right text-[12px]">{position.asset}</TableCell>
               <TableCell className="text-right text-[12px] text-text-muted">
-                {position.tvl}
+                {position.totalSupply}
               </TableCell>
               <TableCell className="text-right text-[12px] text-accent-green">
-                {position.apy}
+                {position.apr}
               </TableCell>
               <TableCell className="text-right text-[12px] text-[#a5eeff]">
                 {position.suppliedBalanceDisplay}
