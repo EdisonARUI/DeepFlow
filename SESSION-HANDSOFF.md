@@ -2,9 +2,17 @@
 
 ## 当前任务
 
-Trading 页数据层与 DeepBook SDK 接线——已完成。
+落地页重构（Figma node 124:71）——已完成。
 
 ## 已完成
+
+- [x] **落地页重构**（Figma node 124:71）：
+  - 根路由 [`app/page.tsx`](app/page.tsx) 由简易入口改为完整营销落地页（Header / Hero / Products / Roadmap / Partners / Footer）。
+  - 页面专属组件置于 `app/_components/`（`landing-*.tsx`、`launch-app-link.tsx`）。
+  - Figma 资产下载至 `public/figma/landing/`（hero 波形、Portfolio 截图、路线图、合作伙伴 logo、社交图标等）。
+  - 所有 LAUNCH APP 入口统一跳转 `/portfolio`。
+  - Products 区块支持 Portfolio / Liquidity / Trading 三 Tab 切换（Liquidity/Trading 为占位预览 + 产品文案）。
+  - 已验证 `npm run build`。
 
 - [x] 已将 `apps/dashboard/` 内容上提到仓库根（`app/`、`components/`、Next.js 配置文件）。
 - [x] 已将 `packages/sdk/` 提升为根级 `sdk/`（包名保持 `@deepflow/sdk`）。
@@ -85,32 +93,91 @@ Trading 页数据层与 DeepBook SDK 接线——已完成。
   - Trading 四组件 + `trading-workspace` 改为 props/hook 驱动；`lib/mock-data.ts` 移除 Trading 静态数据。
   - `PRODUCT.md` 沉淀 Trading 页功能；`ARCHITECTURE.md` 补充 Trading 读路径。
   - 已验证 `npm test`（35 passed, 4 skipped）与 `npm run build`。
+- [x] **修复 SUI Supply「No coins to merge」并验证 NAVI SUI pool deposit 模拟**：
+  - 根因：`buildNaviSupplyTx` 对 SUI 传空 `coins[]` 给 `mergeCoinsPTB`；NAVI SDK 需至少一枚 coin 识别类型后才走 `useGasCoin` + `splitCoins(gas)`。
+  - 修复：SUI 与非 SUI 统一先 `getCoins`，再 `mergeCoinsPTB(tx, coins, { balance, useGasCoin: true })`。
+  - 测试地址 `0x7d87…ac7fc`（~13.30 SUI）；supply **10 SUI**（`10000000000` base units，预留 ~3.29 SUI gas）。
+  - mainnet 集成：`dryRun` + `devInspect` supply 均 `ok: true`（`coinType` 与 symbol 两条路径）。
+  - Liquidity 页 live 模式：NAVI 池列表含 SUI；Supply 表单可选 SUI、输入 10；dryRun 管线与 UI hook 同路径（浏览器自动化无法代连 Slush，需本地 Connect Wallet 后点 Supply 见 `Simulation passed`）。
+  - 已验证 `npm test`（36 passed, 4 skipped）与 `npm run build`。
+- [x] **Portfolio live 模式接入 DeepBook 实时 USDC 定价**：
+  - 新增 `lib/data/pricing/deepbook-mid-price-service.ts`（共享 midPrice 拉取 + 30s TTL 缓存）与 `deepbook-usd-price-oracle.ts`（资产→池映射、交叉汇率、静态回退、warning）。
+  - `LivePortfolioRepository` live 路径改为调用 `fetchDeepbookUsdPrices`，不再硬编码 `MOCK_TOKEN_USD_PRICES`。
+  - `DeepbookTradingAdapter.listMarkets` 复用共享 midPrice 服务，与 Portfolio 共用缓存。
+  - 新增 `lib/data/pricing/deepbook-usd-price-oracle.test.ts`；根目录 `vitest.config.ts` + `npm run test:dashboard`。
+  - 已验证 `npm run test:dashboard`（8 passed）、`npm run build`。
+- [x] **NAVI SUI withdraw bootstrap（单 PTB supply→withdraw）与 Liquidity 页集成**：
+  - 新增 `buildNaviSupplyThenWithdrawTx`、`simulateSupplyThenWithdraw` / `inspectSupplyThenWithdraw`。
+  - Withdraw hook：无 NAVI supply 余额时自动 bootstrap（同量 supply+withdraw）；预检 `walletCoinBalance`。
+  - 修复 `withdrawCoinPTB` 返回 coin 未 `transferObjects` 导致 dryRun `UnusedValueWithoutDrop`；同步修复 `buildNaviWithdrawTx`。
+  - mainnet 集成：SUI **10+10** `dryRun` + `devInspect` 均 `ok: true`（无需预先存入 NAVI）。
+  - 已验证 `npm test`（40 passed, 6 skipped）与 `npm run build`。
+- [x] **Trading DeepBook 原子 PTB bootstrap（单 PTB supply→withdraw→swap→supply USDC）**：
+  - SDK 新增 `@mysten/deepbook-v3` 依赖；`buildTradeBootstrapTx`（NAVI supply SUI → withdraw SUI → DeepBook `swapExactQuantity` 无 BM → NAVI supply USDC）。
+  - 新增 `simulateTradeBootstrap` / `inspectTradeBootstrap`；`sdk/src/sui/deepbook-client.ts`（集成测试报价用）。
+  - swap 找零 coin（`baseChange` / `deepChange`）`transferObjects` 至 sender，避免 `UnusedValueWithoutDrop`。
+  - Trading hook：无 NAVI SUI 持仓且卖 SUI 时自动 bootstrap；预检 `walletCoinBalance`（含 gas 预留）。
+  - 单元测试：`build-trade-bootstrap-tx.unit.test.ts`、`simulate-trade-bootstrap.unit.test.ts`。
+  - mainnet 集成：10 SUI `dryRun` + `devInspect` 均 `ok: true`（`tests/trade-bootstrap.integration.test.ts`）。
+  - 已验证 `npm test`（44 passed, 8 skipped）与 `npm run build`。
+- [x] **Trading bootstrap input-fee / deepAmount 对齐**：
+  - 单元测试默认 `deepAmount: 0`（input-fee 生产路径），另增 DEEP-fee 分支用例。
+  - 集成测试断言 `getQuoteQuantityOutInputFee` 返回 `deepRequired === 0`；新增 DEEP-fee 报价对照与无 DEEP 时 dryRun 失败用例。
+  - `build-trade-bootstrap-tx.ts` + `ARCHITECTURE.md` 文档化 input-fee vs DEEP-fee 策略。
+  - Trading adapter `feeLabel`：input-fee 时显示「手续费从 {输入资产} 扣除」。
+  - 已验证 `npm test`（45 passed, 10 skipped）与 `npm run build`。
+- [x] **Suilend Liquidity 页集成（读 + 写模拟）**：
+  - 依赖：`@suilend/sdk@^3.0.4`、`@suilend/sui-fe`、`@pythnetwork/pyth-sui-js`；`@mysten/sui` 升级至 `^2.17.0`。
+  - 读路径：`lib/data/liquidity/protocols/suilend/`（`SuilendLiquidityAdapter` + `initializeSuilend` + obligation 余额 + 钱包 `getBalance`）。
+  - 写路径：`sdk/src/credit-source/suilend/`（supply / withdraw / bootstrap PTB + `SuilendCreditSourceAdapter`）。
+  - `supply-withdraw.ts` 按 `protocol: navi | suilend` 路由；`LiquidityPositionView.protocolId` + hook 传参。
+  - Mock fixture 新增 `[SUILEND]` 行；`.env.local` 示例 `NEXT_PUBLIC_LIQUIDITY_PROTOCOLS=navi,suilend`。
+  - 测试：`suilend-apr-mapping.unit.test.ts`、`build-suilend-supply-tx.unit.test.ts`、`suilend-supply-withdraw.integration.test.ts`。
+  - 已验证 `npm test`（56 passed, 17 skipped）与 `npm run build`。
+- [x] **Liquidity 页面 APR 与表头修复**：
+  - 表头 `TVL`→`TOTAL SUPPLY`、`APY`→`APR`（`defi-connectivity.tsx`）。
+  - 根因：NAVI `supplyIncentiveApyInfo.apy` 已是百分比字符串（如 `"0.537"`=0.537%），旧 `parseApyToBps` 对 `n<=1` 误乘 10000 导致低 APR 放大 100 倍。
+  - 新增 `lib/data/liquidity/protocols/navi/navi-apy.ts`（`parseNaviAprPercentToBps`）；`formatLiquidityApr` 低 APR 用 2 位小数。
+  - `LiquidityPositionDisplay` 展示字段 `totalSupply` / `apr`。
+  - 测试：`navi-apy.test.ts`；已验证 `npm run test:dashboard`（17 passed）。
+- [x] **修复 Suilend Supply `UnusedValueWithoutDrop`**：
+  - 根因：无既有 obligation 时 PTB 内 `createObligation` 后未 `sendObligationToUser`，`ObligationOwnerCap` 未转回 sender。
+  - SDK：`finalizeNewSuilendObligationCap`（`resolve-obligation-cap.ts`）；`build-suilend-supply-tx` / `build-suilend-supply-then-withdraw-tx` deposit 后调用。
+  - 测试：集成用例断言不出现 `UnusedValueWithoutDrop`；bootstrap dryRun 期望 `ok: true`。
+  - 已验证 `npm test` 与 `npm run build`。
 
 ## 未完成 / 待处理
 
 - [ ] Security 页映射 `ExecutionPolicy` 字段到 `lib/data/*`。
 - [ ] Liquidity **写路径执行**：simulate 通过后 `dAppKit.signAndExecuteTransaction` 上链。
-- [ ] Trading 全链路真实 PTB Builder（NAVI withdraw + DeepBook swap + redeposit 单 PTB）与实际上链。
-- [ ] 扩展 Liquidity 协议适配器：Scallop / Cetus 等。
+- [ ] Trading 有 NAVI 持仓时的纯 withdraw→swap→redeposit PTB（无 bootstrap supply）与实际上链。
+- [ ] 扩展 Liquidity 协议适配器：Scallop / Cetus 等（Suilend 已完成）。
+- [ ] Trading Credit Source 扩展 Suilend（当前仅 NAVI bootstrap）。
 - [ ] 创建 Move 合约模块：`automation_vault`、`policy_guard`、`credit_router`。
-- [ ] 浏览器内手动验证 `NEXT_PUBLIC_DATA_SOURCE=live` + mainnet 钱包连接后 Liquidity 页展示市场池与个人 supply 余额。
+- [ ] 浏览器内手动验证：连接 mainnet 钱包后 Liquidity 页 Withdraw（SUI 10）与 Supply **Simulation passed**（SDK 集成已通过；需 Slush 一次授权）。
 
 ## 下一步建议
 
-1. 本地设置 `NEXT_PUBLIC_DATA_SOURCE=live`，连接 **mainnet** 钱包，验证 Trading 页行情、历史订单、NAVI supplied 余额与 Execute 模拟管线。
-2. 验证 Liquidity / Portfolio 页个人持仓、摘要指标与链上交易列表。
-3. 有 mainnet 测试地址时：`RUN_MAINNET_INTEGRATION=1 INTEGRATION_SENDER=0x... npm test` 验证 supply/withdraw dry run。
-4. Security 页映射 `ExecutionPolicy` 字段；Liquidity simulate 成功后 `signAndExecuteTransaction`。
+1. 连接 mainnet 钱包，Liquidity 页切换 `[SUILEND]` 池，Supply/Withdraw 点 Simulate 验证 dryRun。
+2. 连接 mainnet 钱包，Trading 页 SUI→USDC、输入 **10 SUI**、点 Execute，确认 bootstrap 模拟成功（4 步 PTB 管线 success，无签名）。
+2. Liquidity simulate 通过后接入 `signAndExecuteTransaction` 实际上链。
+3. Security 页映射 `ExecutionPolicy` 字段。
+4. Trading 有 NAVI 持仓时的纯 withdraw→swap→redeposit PTB（跳过 bootstrap supply）。
 
 ## 注意事项
 
 - **DeFi 层与 dApp Kit 固定 mainnet**；不再使用 testnet 或 `NEXT_PUBLIC_SUI_NETWORK` 切换。
 - 切 mainnet 后 **`NEXT_PUBLIC_NAVI_ASSETS` 不得使用 `*_TEST` 后缀**（如 `USDC_TEST`）；应使用 `USDC,SUIUSDE,SUI,WAL,DEEP,XBTC` 或删除该变量使用默认白名单。代码会对遗留 `*_TEST` 配置自动映射并 `console.warn`。
-- Liquidity live 模式依赖 `@naviprotocol/lending`；构建时可能对 `getFullnodeUrl` 有 webpack 警告，运行时通过 `lib/shims/mysten-sui-client.ts` 兼容。
+- Liquidity live 模式依赖 `@naviprotocol/lending` 与 `@suilend/sdk`；NAVI 构建时可能对 `getFullnodeUrl` 有 webpack 警告，运行时通过 `lib/shims/mysten-sui-client.ts` 兼容。Suilend 使用 gRPC client，无需 mysten v1 shim。
+- **`NEXT_PUBLIC_SUILEND_ASSETS`** 默认与 NAVI 白名单相同；可选 **`NEXT_PUBLIC_SUILEND_USE_BETA_MARKET=true`** 切换 beta market（由 `@suilend/sdk` 读取）。
+- Suilend 首次 supply（无 obligation）须在 PTB 末尾 `sendObligationToUser`（`finalizeNewSuilendObligationCap`）；已有 obligation 则复用链上 cap id。
 - `next.config.ts` 中 `turbopack.resolveAlias` 必须使用项目相对路径；Webpack `resolve.alias` 用绝对路径。
 - 环境变量见 `ARCHITECTURE.md` Liquidity 专节；修改 `NEXT_PUBLIC_*` 后需重启 `npm run dev`。
 - supply/withdraw PTB 与模拟仅在 `@deepflow/sdk`；Dashboard 读适配器（`lib/data/liquidity/protocols/*`）禁止包含写路径。
-- SDK 集成测试默认 skip；需 `RUN_MAINNET_INTEGRATION=1` + `INTEGRATION_SENDER`（mainnet 地址）。
-- 页面专属 UI 放在 `app/(dashboard)/{feature}/_components/`；跨页共享 UI 放在 `components/`。
+- SUI supply 须先 `getCoins` 再 `mergeCoinsPTB(..., useGasCoin: true)`；勿传空 coins 数组。
+- SDK 集成测试 SUI supply 示例：`RUN_MAINNET_INTEGRATION=1 INTEGRATION_SENDER=0x... INTEGRATION_ASSET=SUI INTEGRATION_AMOUNT=10000000000 npm test --workspace @deepflow/sdk -- tests/navi-supply-withdraw.integration.test.ts -t "builds supply"`。
+- Withdraw 无 NAVI 持仓时 UI/SDK 走 **supply→withdraw 单 PTB bootstrap**；集成测试：`-t "supply-then-withdraw"` + `INTEGRATION_WITHDRAW_AMOUNT=10000000000`。
+- Trading 无 NAVI SUI 持仓卖 SUI 时 UI/SDK 走 **supply→withdraw→swap→supply USDC 单 PTB bootstrap**；集成测试：`RUN_MAINNET_INTEGRATION=1 INTEGRATION_SENDER=0x... INTEGRATION_AMOUNT=10000000000 npm test --workspace @deepflow/sdk -- tests/trade-bootstrap.integration.test.ts`。
+- 页面专属 UI 放在 `app/(dashboard)/{feature}/_components/` 或根路由 `app/_components/`（landing）；跨页共享 UI 放在 `components/`。
 - Dashboard 不是资金安全边界；supply/withdraw 必须走 SDK 策略校验，不得绕过 Policy Engine。
-- 当前测试：`npm test`（SDK Vitest）、`npm run build`（Dashboard）。
+- 当前测试：`npm test`（SDK Vitest + Dashboard `test:dashboard`）、`npm run build`（Dashboard）。

@@ -21,6 +21,7 @@ Deepflow 项目编码与目录规范。回答：**代码怎么组织、怎么写
 - `app/`：路由与页面编排。
   - `app/(dashboard)/` 为 route group，共享 `AppShell` layout，URL 不含 `(dashboard)` 段。
   - `app/(dashboard)/{feature}/_components/`：仅该路由使用的 UI（`_` 前缀为 private folder，不生成路由）。
+  - `app/_components/`：根路由 landing 页等独立页面专属 UI（如 `landing-*.tsx`、`launch-app-link.tsx`），不包裹 AppShell。
 - `components/`：跨路由共享 UI（`app-shell/`、`ui/`、`terminal-*`、`connect-button` 等）。
 - `lib/`：纯函数、mock 数据、与 UI 无关的工具（如 `mock-data.ts`、`chart-formatters.ts`）。\n+  - `lib/fixtures/`：静态原始数据（mock fixture），用于被数据层组装。\n+  - `lib/data/`：Dashboard 读路径数据层（Repository/Mapper/Hook），组件通过 hook 消费视图数据。
 
