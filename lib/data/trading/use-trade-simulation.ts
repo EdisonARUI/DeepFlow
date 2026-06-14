@@ -4,10 +4,12 @@ import { useCallback, useMemo, useState } from "react";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
 import { parseAmountToBaseUnits } from "@deepflow/sdk/amount/parse-base-units";
 import {
+  buildBootstrapSuccessPipelineSteps,
   buildIdlePipelineSteps,
   buildPipelineStepsFromPtb,
   deepbookQuoteFromHuman,
   simulateTrade,
+  simulateTradeBootstrap,
 } from "@deepflow/sdk/trade";
 import type { PipelineStep } from "@deepflow/sdk/trade";
 import type { CreditSource, ExecutionIntent } from "@deepflow/sdk";
@@ -27,6 +29,7 @@ type SimulateParams = {
   creditPosition?: {
     asset: string;
     suppliedBalance: bigint;
+    walletCoinBalance: bigint;
     protocol: string;
     decimals: number;
   };
@@ -100,9 +103,23 @@ export function useTradeSimulation() {
         return;
       }
 
-      if (baseUnits > creditPosition.suppliedBalance) {
+      const isSellBase = !isReversed;
+      const useBootstrap =
+        isSellBase &&
+        creditPosition.asset.toUpperCase() === "SUI" &&
+        baseUnits > creditPosition.suppliedBalance;
+
+      if (!useBootstrap && baseUnits > creditPosition.suppliedBalance) {
         setStatus("error");
         setError(`DeFi 内 ${creditPosition.asset} supply 余额不足`);
+        return;
+      }
+
+      if (useBootstrap && baseUnits > creditPosition.walletCoinBalance) {
+        setStatus("error");
+        setError(
+          `钱包 ${creditPosition.asset} 余额不足（含 gas 预留），无法 bootstrap supply→swap 模拟`,
+        );
         return;
       }
 
@@ -111,7 +128,6 @@ export function useTradeSimulation() {
       setPipelineSteps(buildIdlePipelineSteps().map((s, i) => (i === 0 ? { ...s, status: "active" } : s)));
 
       try {
-        const isSellBase = !isReversed;
         const fromAsset = isSellBase ? market.baseAsset : market.quoteAsset;
         const toAsset = isSellBase ? market.quoteAsset : market.baseAsset;
         const liveQuote = await repository.getMarketQuote({
@@ -133,6 +149,37 @@ export function useTradeSimulation() {
           slippageBps,
           outputDecimals: 6,
         });
+
+        if (useBootstrap) {
+          setPipelineSteps(
+            buildIdlePipelineSteps().map((step, index) =>
+              index === 0 ? { ...step, status: "done" } : index === 1 ? { ...step, status: "active" } : step,
+            ),
+          );
+
+          const result = await simulateTradeBootstrap({
+            sender: account.address,
+            suiAmount: baseUnits,
+            minUsdcOut: deepbookQuote.minOutput,
+            deepAmount: liveQuote.deepRequired,
+            deepbookPoolKey: market.poolKey,
+          });
+
+          if (!result.ok) {
+            setStatus("error");
+            setError(result.error ?? "链上模拟失败");
+            setPipelineSteps(
+              buildBootstrapSuccessPipelineSteps().map((step, index) =>
+                index === 3 ? { ...step, status: "error" } : { ...step, status: index < 3 ? "done" : step.status },
+              ),
+            );
+            return;
+          }
+
+          setPipelineSteps(buildBootstrapSuccessPipelineSteps());
+          setStatus("success");
+          return;
+        }
 
         const creditSource: CreditSource = creditSourceFromLiquidityPosition(creditPosition);
         const policy = createDemoTradingPolicy(account.address);
