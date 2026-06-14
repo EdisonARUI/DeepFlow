@@ -12,7 +12,12 @@ const mystenSuiClientShimAbsolute = path.join(__dirname, "lib/shims/mysten-sui-c
 const bufferPolyfill = require.resolve("buffer/");
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@mysten/dapp-kit-react", "@deepflow/sdk"],
+  transpilePackages: [
+    "@mysten/dapp-kit-react",
+    "@deepflow/sdk",
+    "@suilend/sdk",
+    "@suilend/sui-fe",
+  ],
   outputFileTracingRoot: path.join(__dirname),
   turbopack: {
     resolveAlias: {
