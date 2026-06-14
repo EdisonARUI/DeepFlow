@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useCurrentAccount } from "@mysten/dapp-kit-react";
+import { useCurrentAccount, useDAppKit } from "@mysten/dapp-kit-react";
 import { parseAmountToBaseUnits } from "@deepflow/sdk/amount/parse-base-units";
 import {
   simulateSupplyThenWithdraw,
@@ -9,17 +9,36 @@ import {
   type SupplyWithdrawOperation,
 } from "@deepflow/sdk/supply-withdraw";
 import type { LiquidityPositionDisplay } from "./liquidity-formatters";
+import { notifyLiquidityPositionsChanged } from "./liquidity-data-events";
+import { resolveLiquidityWriteMode } from "./resolve-liquidity-write-mode";
 
-export type SimulationStatus = "idle" | "simulating" | "success" | "error";
+export type SimulationStatus =
+  | "idle"
+  | "simulating"
+  | "success"
+  | "executing"
+  | "executed"
+  | "error";
 
-export function useSupplyWithdrawSimulation(operation: SupplyWithdrawOperation) {
+type UseSupplyWithdrawSimulationOptions = {
+  onExecuted?: () => void;
+};
+
+export function useSupplyWithdrawSimulation(
+  operation: SupplyWithdrawOperation,
+  options?: UseSupplyWithdrawSimulationOptions,
+) {
   const account = useCurrentAccount();
+  const dAppKit = useDAppKit();
+  const writeMode = resolveLiquidityWriteMode();
   const [status, setStatus] = useState<SimulationStatus>("idle");
   const [error, setError] = useState<string | undefined>();
+  const [txDigest, setTxDigest] = useState<string | undefined>();
 
   const reset = useCallback(() => {
     setStatus("idle");
     setError(undefined);
+    setTxDigest(undefined);
   }, []);
 
   const simulate = useCallback(
@@ -58,8 +77,12 @@ export function useSupplyWithdrawSimulation(operation: SupplyWithdrawOperation) 
         return;
       }
 
+      const canExecuteOnChain =
+        writeMode === "execute" && operation === "supply" && !useWithdrawBootstrap;
+
       setStatus("simulating");
       setError(undefined);
+      setTxDigest(undefined);
 
       try {
         const asset = position.coinType || position.asset;
@@ -83,26 +106,53 @@ export function useSupplyWithdrawSimulation(operation: SupplyWithdrawOperation) 
               operation,
             });
 
-        if (result.ok) {
+        if (!result.ok) {
+          setStatus("error");
+          setError(result.error ?? "Simulation failed");
+          return;
+        }
+
+        if (!canExecuteOnChain) {
           setStatus("success");
           setError(undefined);
           return;
         }
 
-        setStatus("error");
-        setError(result.error ?? "Simulation failed");
+        setStatus("executing");
+
+        const execResult = await dAppKit.signAndExecuteTransaction({
+          transaction: result.transaction,
+        });
+
+        if (execResult.FailedTransaction) {
+          setStatus("error");
+          setError(
+            execResult.FailedTransaction.status.error?.message ?? "Transaction failed",
+          );
+          return;
+        }
+
+        setStatus("executed");
+        setTxDigest(execResult.Transaction.digest);
+        setError(undefined);
+        options?.onExecuted?.();
+        notifyLiquidityPositionsChanged();
       } catch (err) {
         setStatus("error");
         setError(err instanceof Error ? err.message : "Simulation failed");
       }
     },
-    [account?.address, operation],
+    [account?.address, dAppKit, operation, options?.onExecuted, writeMode],
   );
+
+  const isBusy = status === "simulating" || status === "executing";
 
   return {
     status,
     error,
-    isSimulating: status === "simulating",
+    txDigest,
+    writeMode,
+    isSimulating: isBusy,
     simulate,
     reset,
     isWalletConnected: Boolean(account?.address),

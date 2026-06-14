@@ -2,6 +2,7 @@ import type { LiquidityPositionView } from "./types";
 
 export type ListPositionsParams = {
   owner?: string;
+  bustCache?: boolean;
 };
 
 export type ListPositionsResult = {

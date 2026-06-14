@@ -1,3 +1,4 @@
+import { parseAmountToBaseUnits } from "@deepflow/sdk/amount/parse-base-units";
 import type { LiquidityPositionView } from "./types";
 
 export function formatLiquidityTotalSupply(tvlUsd: number | null): string {
@@ -26,6 +27,34 @@ export function formatLiquidityBalance(balance: bigint, decimals: number): strin
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+export function formatAmountFromPercentage(
+  balance: bigint,
+  decimals: number,
+  percentage: number,
+): string {
+  const scaled = (balance * BigInt(Math.round(percentage))) / 100n;
+  return formatLiquidityBalance(scaled, decimals);
+}
+
+export function percentageFromAmount(
+  amount: string,
+  maxBalance: bigint,
+  decimals: number,
+): number {
+  const trimmed = amount.trim();
+  if (!trimmed || maxBalance === 0n) {
+    return 0;
+  }
+
+  try {
+    const baseUnits = parseAmountToBaseUnits(trimmed, decimals);
+    const pct = Number((baseUnits * 100n) / maxBalance);
+    return Math.min(100, Math.max(0, pct));
+  } catch {
+    return 0;
+  }
 }
 
 export type LiquidityPositionDisplay = LiquidityPositionView & {
