@@ -26,12 +26,33 @@ function makeCacheKey(params: ListPositionsParams, protocolIds: readonly Liquidi
   return `${owner}|${SUI_NETWORK}|${protocolIds.join(",")}`;
 }
 
+/** Drop cached liquidity positions (optionally scoped to a wallet owner). */
+export function invalidateLiquidityPositionCache(params?: { owner?: string }) {
+  const ownerPrefix = params?.owner ?? "";
+
+  for (const key of CACHE.keys()) {
+    if (!ownerPrefix || key.startsWith(`${ownerPrefix}|`)) {
+      CACHE.delete(key);
+    }
+  }
+
+  for (const key of IN_FLIGHT.keys()) {
+    if (!ownerPrefix || key.startsWith(`${ownerPrefix}|`)) {
+      IN_FLIGHT.delete(key);
+    }
+  }
+}
+
 export class LiquidityAggregatorRepository implements LiquidityRepository {
   constructor(private readonly adapters: LiquidityProtocolAdapter[]) {}
 
   async listPositions(params: ListPositionsParams) {
     if (this.adapters.length === 0) {
       return { positions: [] };
+    }
+
+    if (params.bustCache) {
+      invalidateLiquidityPositionCache({ owner: params.owner });
     }
 
     const protocolIds = this.adapters.map((a) => a.protocolId);
@@ -50,7 +71,12 @@ export class LiquidityAggregatorRepository implements LiquidityRepository {
 
     const fetchPromise = (async () => {
       const settled = await Promise.allSettled(
-        this.adapters.map((adapter) => adapter.listPositions({ ownerAddress: params.owner })),
+        this.adapters.map((adapter) =>
+          adapter.listPositions({
+            ownerAddress: params.owner,
+            bustCache: params.bustCache,
+          }),
+        ),
       );
 
       const fulfilled = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));

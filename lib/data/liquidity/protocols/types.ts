@@ -4,6 +4,7 @@ export type LiquidityProtocolId = "navi" | "suilend" | "scallop" | "cetus" | str
 
 export type ListLiquidityPositionsParams = {
   ownerAddress?: string;
+  bustCache?: boolean;
 };
 
 export type ListLiquidityPositionsResult = {
