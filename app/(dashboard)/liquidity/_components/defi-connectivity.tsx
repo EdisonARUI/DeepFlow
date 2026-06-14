@@ -1,5 +1,6 @@
 "use client";
 
+import { AssetIcon } from "@/components/asset-icon";
 import { Building2 } from "lucide-react";
 import { TerminalLabel } from "@/components/terminal-label";
 import { TerminalPanel } from "@/components/terminal-panel";
@@ -34,13 +35,10 @@ export function DeFiConnectivity({ positions, selectedId, onSelect }: DeFiConnec
       <Table>
         <TableHeader>
           <TableRow className="border-border-default hover:bg-transparent">
-            {["PROTOCOL", "ASSET", "TOTAL SUPPLY", "APR", "BALANCE"].map((col, i) => (
+            {["PROTOCOL", "ASSET", "TOTAL SUPPLY", "APR", "BALANCE"].map((col) => (
               <TableHead
                 key={col}
-                className={cn(
-                  "text-[11px] font-normal tracking-[0.6px] text-text-muted uppercase",
-                  i > 0 && "text-right",
-                )}
+                className="text-[11px] font-normal tracking-[0.6px] text-text-muted uppercase"
               >
                 {col}
               </TableHead>
@@ -66,14 +64,19 @@ export function DeFiConnectivity({ positions, selectedId, onSelect }: DeFiConnec
                   {position.protocol}
                 </div>
               </TableCell>
-              <TableCell className="text-right text-[12px]">{position.asset}</TableCell>
-              <TableCell className="text-right text-[12px] text-text-muted">
+              <TableCell className="text-[12px]">
+                <div className="flex items-center gap-2">
+                  <AssetIcon asset={position.asset} size="sm" />
+                  <span>{position.asset}</span>
+                </div>
+              </TableCell>
+              <TableCell className="text-[12px] text-text-muted">
                 {position.totalSupply}
               </TableCell>
-              <TableCell className="text-right text-[12px] text-accent-green">
+              <TableCell className="text-[12px] text-accent-green">
                 {position.apr}
               </TableCell>
-              <TableCell className="text-right text-[12px] text-[#a5eeff]">
+              <TableCell className="text-[12px] text-[#a5eeff]">
                 {position.suppliedBalanceDisplay}
               </TableCell>
             </TableRow>

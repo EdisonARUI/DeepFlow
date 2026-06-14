@@ -93,6 +93,7 @@ export function LiquidityWorkspace() {
         positions={displayPositions}
         selectedPosition={selectedPosition}
         onAssetChange={setSelectedId}
+        onPositionsRefetch={(options) => void refetch(options)}
       />
     </>
   );

@@ -1,3 +1,4 @@
+import { AssetIcon } from "@/components/asset-icon";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -38,6 +39,7 @@ export function PositionAmountInput({
         <Input
           value={amount}
           onChange={(e) => onAmountChange(e.target.value)}
+          placeholder="0.00"
           className="h-auto flex-1 rounded-none border-0 bg-transparent p-0 text-3xl shadow-none focus-visible:ring-0"
         />
         <Select
@@ -46,12 +48,14 @@ export function PositionAmountInput({
             if (asset) onAssetChange(asset);
           }}
         >
-          <SelectTrigger className="w-28 rounded-none border-border-default bg-bg-panel">
+          <SelectTrigger className="w-32 rounded-none border-border-default bg-bg-panel">
+            <AssetIcon asset={selectedAsset} size="sm" />
             <SelectValue placeholder={selectedAsset} />
           </SelectTrigger>
           <SelectContent>
             {assets.map((asset) => (
               <SelectItem key={asset} value={asset}>
+                <AssetIcon asset={asset} size="sm" />
                 {asset}
               </SelectItem>
             ))}

@@ -1,8 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import type { LiquidityPositionDisplay } from "@/lib/data/liquidity/liquidity-formatters";
-import { getSimulationGasFeeLabel } from "@/lib/data/liquidity/simulation-gas-fee-label";
+import {
+  formatAmountFromPercentage,
+  percentageFromAmount,
+  type LiquidityPositionDisplay,
+} from "@/lib/data/liquidity/liquidity-formatters";
 import type { SimulationStatus } from "@/lib/data/liquidity/use-supply-withdraw-simulation";
 import { PositionAmountInput } from "./position-amount-input";
 import { PositionPercentageSlider } from "./position-percentage-slider";
@@ -46,6 +49,21 @@ export function WithdrawPositionForm({
   const statusVariant =
     simulationStatus === "success" ? "success" : simulationStatus === "error" ? "error" : undefined;
 
+  const maxBalance = selectedPosition.suppliedBalance;
+
+  const handleSliderChange = (value: number[]) => {
+    onSliderChange(value);
+    const pct = value[0] ?? 0;
+    onAmountChange(formatAmountFromPercentage(maxBalance, selectedPosition.decimals, pct));
+  };
+
+  const handleAmountChange = (value: string) => {
+    onAmountChange(value);
+    onSliderChange([
+      percentageFromAmount(value, maxBalance, selectedPosition.decimals),
+    ]);
+  };
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
       <div className="space-y-3">
@@ -58,7 +76,7 @@ export function WithdrawPositionForm({
           balanceLabel="Pool Balance"
           balance={selectedPosition.suppliedBalanceDisplay}
           amount={amount}
-          onAmountChange={onAmountChange}
+          onAmountChange={handleAmountChange}
           selectedAsset={selectedPosition.asset}
           assets={protocolAssets.map((position) => position.asset)}
           onAssetChange={(asset) => {
@@ -66,7 +84,7 @@ export function WithdrawPositionForm({
             if (position) onAssetChange(position.id);
           }}
         />
-        <PositionPercentageSlider value={slider} onValueChange={onSliderChange} />
+        <PositionPercentageSlider value={slider} onValueChange={handleSliderChange} />
       </div>
       <TransactionOverviewPanel
         rows={[
@@ -76,7 +94,6 @@ export function WithdrawPositionForm({
             value: selectedPosition.suppliedBalanceDisplay,
             valueClassName: "text-accent-green",
           },
-          { label: "Gas Fee", value: getSimulationGasFeeLabel(simulationStatus) },
         ]}
         actionLabel="Withdraw"
         onAction={onSimulate}

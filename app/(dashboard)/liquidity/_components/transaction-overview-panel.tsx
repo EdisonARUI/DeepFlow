@@ -13,8 +13,9 @@ type TransactionOverviewPanelProps = {
   actionLabel: string;
   onAction?: () => void;
   isLoading?: boolean;
+  loadingLabel?: string;
   disabled?: boolean;
-  statusMessage?: string;
+  statusMessage?: React.ReactNode;
   statusVariant?: "success" | "error";
 };
 
@@ -23,6 +24,7 @@ export function TransactionOverviewPanel({
   actionLabel,
   onAction,
   isLoading = false,
+  loadingLabel = "Simulating...",
   disabled = false,
   statusMessage,
   statusVariant,
@@ -62,7 +64,7 @@ export function TransactionOverviewPanel({
         disabled={isActionDisabled}
         className="mt-6 h-10 w-full rounded-none bg-accent-cyan text-[11px] font-bold tracking-[1.1px] text-[var(--text-on-accent)] uppercase hover:bg-accent-cyan/90 disabled:opacity-50"
       >
-        {isLoading ? "Simulating..." : actionLabel}
+        {isLoading ? loadingLabel : actionLabel}
       </Button>
     </div>
   );
