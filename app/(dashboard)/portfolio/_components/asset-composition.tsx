@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { RotateCw } from "lucide-react";
+import { AssetIcon } from "@/components/asset-icon";
 import { TerminalLabel } from "@/components/terminal-label";
 import { TerminalPanel } from "@/components/terminal-panel";
 import { Button } from "@/components/ui/button";
@@ -91,6 +92,7 @@ export function AssetComposition({ allocationByFilter, onRefresh }: AssetComposi
               {allocation.map((item) => (
                 <div key={item.name} className="flex items-center gap-3">
                   <span className="size-2 shrink-0" style={{ backgroundColor: item.color }} />
+                  <AssetIcon asset={item.name} size="sm" />
                   <div>
                     <p className="text-[10px] text-text-muted">
                       {item.name} ({item.percent}%)

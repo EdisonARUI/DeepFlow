@@ -4,8 +4,8 @@ import type { PortfolioSummaryView } from "@/lib/data/portfolio/types";
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
 });
 
 type PortfolioSummaryStatsProps = {
@@ -32,7 +32,7 @@ export function PortfolioSummaryStats({ summary }: PortfolioSummaryStatsProps) {
     },
     {
       label: "UTILIZATION_RATE",
-      value: `${summary.utilizationRate}%`,
+      value: `${summary.utilizationRate.toFixed(2)}%`,
       valueClassName: "text-accent-orange",
     },
   ] as const;

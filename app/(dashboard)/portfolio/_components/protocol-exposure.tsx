@@ -28,7 +28,6 @@ function createExposureCell(exposure: ProtocolExposureItem[]) {
     }
 
     const compact = width < 80 || height < 60;
-    const labelColor = item.textColor ?? "#001f25";
 
     return (
       <g>
@@ -44,7 +43,7 @@ function createExposureCell(exposure: ProtocolExposureItem[]) {
         <foreignObject x={x} y={y} width={width} height={height}>
           <div
             className="flex h-full flex-col justify-between p-3"
-            style={{ color: labelColor }}
+            style={{ color: "#000000" }}
           >
             <div className="flex items-start justify-between gap-2 text-[10px] uppercase">
               <span className={compact ? "truncate opacity-80" : "opacity-80"}>{item.name}</span>

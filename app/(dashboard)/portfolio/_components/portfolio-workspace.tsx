@@ -56,9 +56,6 @@ export function PortfolioWorkspace() {
           连接钱包以查看个人持仓与链上交易；当前展示的是 mock / 市场演示数据。
         </p>
       )}
-      {portfolio.priceWarning && (
-        <p className="text-sm text-text-muted">{portfolio.priceWarning}</p>
-      )}
       {portfolio.transactionWarning && (
         <p className="text-sm text-text-muted">{portfolio.transactionWarning}</p>
       )}
