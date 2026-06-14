@@ -63,3 +63,12 @@ export type CreditSourceOption = {
   protocol: string;
   label: string;
 };
+
+export type TradeFundLocation = "wallet" | "navi" | "suilend";
+
+export type TradeExecutionRoute =
+  | "wallet_wallet"
+  | "wallet_navi"
+  | "navi_navi"
+  | "navi_wallet"
+  | "unsupported";

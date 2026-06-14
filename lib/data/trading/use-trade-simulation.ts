@@ -6,19 +6,23 @@ import { parseAmountToBaseUnits } from "@deepflow/sdk/amount/parse-base-units";
 import {
   buildBootstrapSuccessPipelineSteps,
   buildIdlePipelineSteps,
-  buildPipelineStepsFromPtb,
+  buildNaviReturnSuccessPipelineSteps,
+  buildNaviRoundTripSuccessPipelineSteps,
+  buildWalletSwapSuccessPipelineSteps,
   deepbookQuoteFromHuman,
-  simulateTrade,
   simulateTradeBootstrap,
+  simulateTradeNaviReturn,
+  simulateTradeNaviRoundTrip,
+  simulateTradeWalletSwap,
 } from "@deepflow/sdk/trade";
 import type { PipelineStep } from "@deepflow/sdk/trade";
-import type { CreditSource, ExecutionIntent } from "@deepflow/sdk";
 import { createTradingRepository } from "./create-trading-repository";
 import {
-  createDemoTradingPolicy,
-  creditSourceFromLiquidityPosition,
-} from "./trading-policy";
-import type { TradingMarketView, TradeQuoteView } from "./types";
+  assertSupportedTradePool,
+  isSuilendInvolved,
+  resolveTradeExecutionRoute,
+} from "./resolve-trade-execution";
+import type { TradeFundLocation, TradingMarketView, TradeQuoteView } from "./types";
 
 export type TradeSimulationStatus = "idle" | "simulating" | "success" | "error";
 
@@ -26,13 +30,12 @@ type SimulateParams = {
   market: TradingMarketView;
   fromAmount: string;
   isReversed: boolean;
-  creditPosition?: {
-    asset: string;
-    suppliedBalance: bigint;
-    walletCoinBalance: bigint;
-    protocol: string;
-    decimals: number;
-  };
+  fundSource: TradeFundLocation;
+  fundDestination: TradeFundLocation;
+  payBalance: bigint;
+  payDecimals: number;
+  fromAsset: string;
+  toAsset: string;
 };
 
 export function useTradeSimulation() {
@@ -52,7 +55,7 @@ export function useTradeSimulation() {
   }, []);
 
   const refreshQuote = useCallback(
-    async (params: SimulateParams) => {
+    async (params: Pick<SimulateParams, "market" | "fromAmount" | "isReversed">) => {
       const parsed = parseFloat(params.fromAmount) || 0;
       const isSellBase = !params.isReversed;
 
@@ -74,7 +77,17 @@ export function useTradeSimulation() {
 
   const simulate = useCallback(
     async (params: SimulateParams) => {
-      const { market, fromAmount, isReversed, creditPosition } = params;
+      const {
+        market,
+        fromAmount,
+        isReversed,
+        fundSource,
+        fundDestination,
+        payBalance,
+        payDecimals,
+        fromAsset,
+        toAsset,
+      } = params;
 
       if (!account?.address) {
         setStatus("error");
@@ -82,15 +95,29 @@ export function useTradeSimulation() {
         return;
       }
 
-      if (!creditPosition) {
+      if (isSuilendInvolved(fundSource, fundDestination)) {
         setStatus("error");
-        setError("未找到匹配的 DeFi credit source 余额");
+        setError("Suilend 交易路径尚未支持");
+        return;
+      }
+
+      const poolError = assertSupportedTradePool(market.poolKey);
+      if (poolError) {
+        setStatus("error");
+        setError(poolError);
+        return;
+      }
+
+      const isSellBase = !isReversed;
+      if (!isSellBase || fromAsset.toUpperCase() !== "SUI" || toAsset.toUpperCase() !== "USDC") {
+        setStatus("error");
+        setError("当前 Execute 模拟仅支持卖出 SUI 换 USDC");
         return;
       }
 
       let baseUnits: bigint;
       try {
-        baseUnits = parseAmountToBaseUnits(fromAmount, creditPosition.decimals);
+        baseUnits = parseAmountToBaseUnits(fromAmount, payDecimals);
       } catch (err) {
         setStatus("error");
         setError(err instanceof Error ? err.message : "Invalid amount");
@@ -103,33 +130,30 @@ export function useTradeSimulation() {
         return;
       }
 
-      const isSellBase = !isReversed;
-      const useBootstrap =
-        isSellBase &&
-        creditPosition.asset.toUpperCase() === "SUI" &&
-        baseUnits > creditPosition.suppliedBalance;
-
-      if (!useBootstrap && baseUnits > creditPosition.suppliedBalance) {
+      const route = resolveTradeExecutionRoute(fundSource, fundDestination);
+      if (route === "unsupported") {
         setStatus("error");
-        setError(`DeFi 内 ${creditPosition.asset} supply 余额不足`);
+        setError("当前 SOURCE / DESTINATION 组合尚未支持");
         return;
       }
 
-      if (useBootstrap && baseUnits > creditPosition.walletCoinBalance) {
+      if (baseUnits > payBalance) {
+        const sourceLabel =
+          fundSource === "wallet" ? "钱包" : fundSource.toUpperCase();
         setStatus("error");
-        setError(
-          `钱包 ${creditPosition.asset} 余额不足（含 gas 预留），无法 bootstrap supply→swap 模拟`,
-        );
+        setError(`${sourceLabel} 内 ${fromAsset} 余额不足`);
         return;
       }
 
       setStatus("simulating");
       setError(undefined);
-      setPipelineSteps(buildIdlePipelineSteps().map((s, i) => (i === 0 ? { ...s, status: "active" } : s)));
+      setPipelineSteps(
+        buildIdlePipelineSteps().map((step, index) =>
+          index === 0 ? { ...step, status: "active" } : step,
+        ),
+      );
 
       try {
-        const fromAsset = isSellBase ? market.baseAsset : market.quoteAsset;
-        const toAsset = isSellBase ? market.quoteAsset : market.baseAsset;
         const liveQuote = await repository.getMarketQuote({
           poolKey: market.poolKey,
           inputAmount: parseFloat(fromAmount) || 0,
@@ -150,20 +174,35 @@ export function useTradeSimulation() {
           outputDecimals: 6,
         });
 
-        if (useBootstrap) {
-          setPipelineSteps(
-            buildIdlePipelineSteps().map((step, index) =>
-              index === 0 ? { ...step, status: "done" } : index === 1 ? { ...step, status: "active" } : step,
-            ),
-          );
+        const swapParams = {
+          sender: account.address,
+          suiAmount: baseUnits,
+          minUsdcOut: deepbookQuote.minOutput,
+          deepAmount: liveQuote.deepRequired,
+          deepbookPoolKey: market.poolKey,
+        };
 
-          const result = await simulateTradeBootstrap({
-            sender: account.address,
-            suiAmount: baseUnits,
-            minUsdcOut: deepbookQuote.minOutput,
-            deepAmount: liveQuote.deepRequired,
-            deepbookPoolKey: market.poolKey,
-          });
+        if (route === "wallet_wallet") {
+          const result = await simulateTradeWalletSwap(swapParams);
+
+          if (!result.ok) {
+            setStatus("error");
+            setError(result.error ?? "链上模拟失败");
+            setPipelineSteps(
+              buildWalletSwapSuccessPipelineSteps().map((step, index) =>
+                index === 0 ? { ...step, status: "error" } : step,
+              ),
+            );
+            return;
+          }
+
+          setPipelineSteps(buildWalletSwapSuccessPipelineSteps());
+          setStatus("success");
+          return;
+        }
+
+        if (route === "wallet_navi") {
+          const result = await simulateTradeBootstrap(swapParams);
 
           if (!result.ok) {
             setStatus("error");
@@ -181,55 +220,49 @@ export function useTradeSimulation() {
           return;
         }
 
-        const creditSource: CreditSource = creditSourceFromLiquidityPosition(creditPosition);
-        const policy = createDemoTradingPolicy(account.address);
+        if (route === "navi_navi") {
+          const result = await simulateTradeNaviRoundTrip(swapParams);
 
-        const intent: ExecutionIntent = {
-          id: `trade-${Date.now()}`,
-          market: `DEEPBOOK:${market.poolKey.replace("_", "-")}`,
-          side: isSellBase ? "sell" : "buy",
-          inputAsset: fromAsset,
-          outputAsset: toAsset,
-          amount: baseUnits,
-          minOutput: deepbookQuote.minOutput,
-          maxSlippageBps: slippageBps,
-          destination: account.address,
-          deadlineMs: Date.now() + 120_000,
-          creditSourceId: creditSource.id,
-          settlementMode: "redeposit",
-        };
+          if (!result.ok) {
+            setStatus("error");
+            setError(result.error ?? "链上模拟失败");
+            setPipelineSteps(
+              buildNaviRoundTripSuccessPipelineSteps().map((step, index) =>
+                index === 2 ? { ...step, status: "error" } : { ...step, status: index < 2 ? "done" : step.status },
+              ),
+            );
+            return;
+          }
 
-        setPipelineSteps(
-          buildIdlePipelineSteps().map((step, index) =>
-            index === 0 ? { ...step, status: "done" } : index === 1 ? { ...step, status: "active" } : step,
-          ),
-        );
-
-        const result = simulateTrade({
-          intent,
-          policy,
-          creditSources: [creditSource],
-          deepbookQuote,
-        });
-
-        if (result.status === "rejected") {
-          setStatus("error");
-          setError(result.issues?.[0]?.message ?? "策略校验未通过");
-          setPipelineSteps(result.pipelineSteps);
+          setPipelineSteps(buildNaviRoundTripSuccessPipelineSteps());
+          setStatus("success");
           return;
         }
 
-        if (result.ptb) {
-          setPipelineSteps(buildPipelineStepsFromPtb(result.ptb, "success"));
-        }
+        if (route === "navi_wallet") {
+          const result = await simulateTradeNaviReturn(swapParams);
 
-        setStatus("success");
+          if (!result.ok) {
+            setStatus("error");
+            setError(result.error ?? "链上模拟失败");
+            setPipelineSteps(
+              buildNaviReturnSuccessPipelineSteps().map((step, index) =>
+                index === 2 ? { ...step, status: "error" } : { ...step, status: index < 2 ? "done" : step.status },
+              ),
+            );
+            return;
+          }
+
+          setPipelineSteps(buildNaviReturnSuccessPipelineSteps());
+          setStatus("success");
+          return;
+        }
       } catch (err) {
         setStatus("error");
         setError(err instanceof Error ? err.message : "模拟失败");
         setPipelineSteps(
           buildIdlePipelineSteps().map((step, index) =>
-            index === 3 ? { ...step, status: "error" } : { ...step, status: index < 3 ? "done" : step.status },
+            index === 0 ? { ...step, status: "error" } : step,
           ),
         );
       }

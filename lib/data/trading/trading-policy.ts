@@ -41,8 +41,17 @@ export function creditSourceFromLiquidityPosition(position: {
   asset: string;
   suppliedBalance: bigint;
   protocol: string;
+  protocolId?: string;
 }): CreditSource {
-  const protocol = position.protocol.toLowerCase().includes("navi") ? "navi" : "mock";
+  const protocolId = position.protocolId?.toLowerCase();
+  const protocolLabel = position.protocol.toLowerCase();
+
+  let protocol: CreditSource["protocol"] = "mock";
+  if (protocolId === "navi" || protocolLabel.includes("navi")) {
+    protocol = "navi";
+  } else if (protocolId === "suilend" || protocolLabel.includes("suilend")) {
+    protocol = "suilend";
+  }
 
   return {
     id: `${protocol}-${position.asset.toLowerCase()}`,
