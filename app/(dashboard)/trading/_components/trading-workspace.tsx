@@ -89,6 +89,7 @@ export function TradingWorkspace() {
         ? {
             asset: creditPosition.asset,
             suppliedBalance: creditPosition.suppliedBalance,
+            walletCoinBalance: creditPosition.walletCoinBalance,
             protocol: creditPosition.protocol,
             decimals: creditPosition.decimals,
           }
