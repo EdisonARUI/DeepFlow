@@ -1,4 +1,9 @@
 import { mainnetCoins, mainnetPools } from "@mysten/deepbook-v3";
+import {
+  fetchDeepbookMidPrice,
+  fetchDeepbookMidPrices,
+  resolveFeaturedPoolKeys,
+} from "@/lib/data/pricing/deepbook-mid-price-service";
 import { createDeepbookClient } from "@/lib/sui/deepbook-client";
 import {
   mapToDeepbookOrderViews,
@@ -18,22 +23,6 @@ import type {
 import type { TradeQuoteView } from "../../types";
 import { fetchIndexerOrders } from "./deepbook-indexer-client";
 
-const FEATURED_POOL_KEYS = [
-  "SUI_USDC",
-  "DEEP_SUI",
-  "WUSDT_USDC",
-  "WAL_USDC",
-] as const;
-
-const MARKETS_CACHE_TTL_MS = 30_000;
-
-let marketsCache: { expiresAt: number; markets: TradingMarketRaw[] } | null =
-  null;
-
-function resolveFeaturedPoolKeys(): string[] {
-  return FEATURED_POOL_KEYS.filter((key) => key in mainnetPools);
-}
-
 function mapIndexerStatus(status: string, filled: number, total: number): DeepbookOrderStatus {
   const normalized = status.toUpperCase();
   if (normalized === "CANCELED" || normalized === "CANCELLED") return "CANCELED";
@@ -48,9 +37,12 @@ function mapIndexerSide(type: string): "BUY" | "SELL" {
     : "SELL";
 }
 
-function formatDeepFee(deepRequired: number): string {
+function formatSwapFeeLabel(
+  deepRequired: number,
+  inputAsset: string,
+): string {
   if (!Number.isFinite(deepRequired) || deepRequired <= 0) {
-    return "~0 DEEP";
+    return `手续费从 ${inputAsset} 扣除`;
   }
   const scalar = mainnetCoins.DEEP?.scalar ?? 1e6;
   const human = deepRequired / scalar;
@@ -59,32 +51,20 @@ function formatDeepFee(deepRequired: number): string {
 
 export class DeepbookTradingAdapter {
   async listMarkets(): Promise<ListMarketsResult> {
-    const now = Date.now();
-    if (marketsCache && marketsCache.expiresAt > now) {
-      return { markets: mapToTradingMarketViews(marketsCache.markets) };
-    }
-
-    const client = createDeepbookClient();
     const poolKeys = resolveFeaturedPoolKeys();
+    const midPrices = await fetchDeepbookMidPrices(poolKeys);
 
-    const markets: TradingMarketRaw[] = await Promise.all(
-      poolKeys.map(async (poolKey) => {
+    const markets: TradingMarketRaw[] = poolKeys
+      .filter((poolKey) => midPrices[poolKey] !== undefined)
+      .map((poolKey) => {
         const pool = mainnetPools[poolKey as keyof typeof mainnetPools];
-        const midPrice = await client.deepbook.midPrice(poolKey);
-
         return {
           poolKey,
           baseAsset: pool.baseCoin,
           quoteAsset: pool.quoteCoin,
-          midPrice,
+          midPrice: midPrices[poolKey],
         };
-      }),
-    );
-
-    marketsCache = {
-      markets,
-      expiresAt: now + MARKETS_CACHE_TTL_MS,
-    };
+      });
 
     return { markets: mapToTradingMarketViews(markets) };
   }
@@ -94,15 +74,18 @@ export class DeepbookTradingAdapter {
 
     if (!Number.isFinite(inputAmount) || inputAmount <= 0) {
       const market = await this.getMarketMidPrice(poolKey);
+      const pool = mainnetPools[poolKey as keyof typeof mainnetPools];
+      const inputAsset = isSellBase ? pool.baseCoin : pool.quoteCoin;
       return {
         estimatedOutput: 0,
         displayRate: market,
-        feeLabel: "~0 DEEP",
+        feeLabel: formatSwapFeeLabel(0, inputAsset),
         deepRequired: 0,
       };
     }
 
     const client = createDeepbookClient();
+    const pool = mainnetPools[poolKey as keyof typeof mainnetPools];
 
     if (isSellBase) {
       const result = await client.deepbook.getQuoteQuantityOutInputFee(
@@ -115,7 +98,7 @@ export class DeepbookTradingAdapter {
       return {
         estimatedOutput: result.quoteOut,
         displayRate,
-        feeLabel: formatDeepFee(result.deepRequired),
+        feeLabel: formatSwapFeeLabel(result.deepRequired, pool.baseCoin),
         deepRequired: result.deepRequired,
       };
     }
@@ -132,7 +115,7 @@ export class DeepbookTradingAdapter {
     return {
       estimatedOutput: result.baseOut,
       displayRate,
-      feeLabel: formatDeepFee(result.deepRequired),
+      feeLabel: formatSwapFeeLabel(result.deepRequired, pool.quoteCoin),
       deepRequired: result.deepRequired,
     };
   }
@@ -199,7 +182,7 @@ export class DeepbookTradingAdapter {
   }
 
   private async getMarketMidPrice(poolKey: string): Promise<number> {
-    const client = createDeepbookClient();
-    return client.deepbook.midPrice(poolKey);
+    const price = await fetchDeepbookMidPrice(poolKey);
+    return price ?? 0;
   }
 }
