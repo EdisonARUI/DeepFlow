@@ -95,7 +95,7 @@ function buildSummary(
   const idleCapital = sumWalletUsd(positions, prices);
   const totalAssets = workingCapital + idleCapital;
   const utilizationRate =
-    totalAssets > 0 ? Math.round((workingCapital / totalAssets) * 100) : 0;
+    totalAssets > 0 ? (workingCapital / totalAssets) * 100 : 0;
 
   return {
     totalAssets,
@@ -149,11 +149,12 @@ function buildAllocationForFilter(
     return aggregateTokenBalances([...suppliedEntries, ...walletEntries]);
   }
 
-  if (filter === "DEEPBOOK") {
-    const deepbookPositions = positions.filter(
-      (p) => normalizeProtocol(p.protocol) === "deepbook",
-    );
-    return buildAllocationForPositions(deepbookPositions, prices, "supplied");
+  if (filter === "WALLET") {
+    const walletEntries = [...dedupeWalletBalances(positions).values()].map((entry) => ({
+      asset: entry.asset,
+      usdValue: balanceToUsd(entry.balance, entry.decimals, entry.asset, prices),
+    }));
+    return aggregateTokenBalances(walletEntries);
   }
 
   const protocolKey = filter.toLowerCase();

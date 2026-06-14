@@ -1,4 +1,4 @@
-export const PROTOCOL_FILTERS = ["ALL", "NAVI", "SCALLOP", "CETUS", "DEEPBOOK"] as const;
+export const PROTOCOL_FILTERS = ["ALL", "NAVI", "SUILEND", "WALLET"] as const;
 export type ProtocolFilter = (typeof PROTOCOL_FILTERS)[number];
 
 export const EXPOSURE_PROTOCOLS = [

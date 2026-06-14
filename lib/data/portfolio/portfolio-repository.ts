@@ -3,6 +3,7 @@ import type { PortfolioView } from "./types";
 export type ListPortfolioParams = {
   owner?: string;
   transactionDays?: number;
+  bustCache?: boolean;
 };
 
 export type ListPortfolioResult = PortfolioView;

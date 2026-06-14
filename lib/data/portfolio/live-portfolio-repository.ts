@@ -14,7 +14,10 @@ export class LivePortfolioRepository implements PortfolioRepository {
     const days = params.transactionDays ?? 30;
 
     const [liquidityResult, transactionResult] = await Promise.all([
-      liquidityRepository.listPositions({ owner: params.owner }),
+      liquidityRepository.listPositions({
+        owner: params.owner,
+        bustCache: params.bustCache,
+      }),
       listRecentTransactions({ owner: params.owner, days }),
     ]);
 
