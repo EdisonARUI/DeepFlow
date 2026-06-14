@@ -8,6 +8,7 @@ import type {
 } from "../types";
 import { parseNaviAprPercentToBps } from "./navi-apy";
 import { createNaviRpcClient } from "./navi-rpc-client";
+import { buildSupplyBalanceMap } from "./navi-supply-balance";
 
 const NAVI_PROTOCOL_ID = "navi" as const;
 const NAVI_PROTOCOL_LABEL = "[NAVI]";
@@ -84,43 +85,6 @@ function isAllowedAsset(symbol: string, allowlist: readonly string[]): boolean {
 function parseUsdNumber(value: string): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
-}
-
-function parseBigIntSafe(value: string): bigint {
-  try {
-    return BigInt(value);
-  } catch {
-    return BigInt(0);
-  }
-}
-
-function buildSupplyBalanceMap(
-  positions: Awaited<ReturnType<typeof getLendingPositions>>,
-  allowlist: readonly string[],
-): Map<string, bigint> {
-  const balances = new Map<string, bigint>();
-
-  for (const position of positions) {
-    if (position.protocol !== "navi") continue;
-
-    const supply =
-      position.type === "navi-lending-supply"
-        ? position["navi-lending-supply"]
-        : position.type === "navi-lending-emode-supply"
-          ? position["navi-lending-emode-supply"]
-          : undefined;
-
-    if (!supply) continue;
-
-    const symbol = supply.token.symbol;
-    if (!isAllowedAsset(symbol, allowlist)) continue;
-
-    const key = normalizeSymbol(symbol);
-    const amount = parseBigIntSafe(supply.amount);
-    balances.set(key, (balances.get(key) ?? BigInt(0)) + amount);
-  }
-
-  return balances;
 }
 
 async function buildWalletCoinBalanceMap(
@@ -202,6 +166,7 @@ export class NaviLiquidityAdapter implements LiquidityProtocolAdapter {
       env: NAVI_ENV,
       markets: [NAVI_MAIN_MARKET],
       cacheTime: NAVI_CACHE_TIME_MS,
+      ...(params.bustCache ? { disableCache: true } : {}),
     };
 
     let pools: Awaited<ReturnType<typeof getPools>>;
