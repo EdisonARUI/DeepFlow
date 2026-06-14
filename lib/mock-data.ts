@@ -2,7 +2,6 @@ export const NAV_ITEMS = [
   { href: "/portfolio", label: "PORTFOLIO", section: "PORTFOLIO" },
   { href: "/liquidity", label: "LIQUIDITY", section: "LIQUIDITY" },
   { href: "/trading", label: "TRADING", section: "TRADING" },
-  { href: "/security", label: "SECURITY", section: "SECURITY" },
 ] as const;
 
 export type WhitelistEntry = {
