@@ -2,9 +2,58 @@
 
 ## 当前任务
 
-落地页重构（Figma node 124:71）——已完成。
+Trading / Liquidity UI 微调——已完成。
 
 ## 已完成
+
+- [x] **Trading / Liquidity UI 微调**：
+  - Liquidity `defi-connectivity`：表头与表体各列（PROTOCOL / ASSET / TOTAL SUPPLY / APR / BALANCE）统一左对齐。
+  - Trading `swap-widget`：PAY 输入框初始值改为空字符串；RECEIVE 无估算输出时同样为空（显示 placeholder）。
+  - Trading `swap-amount-block`：输入框增加 `placeholder="0.00"`；移除只读资产 badge 上的 `ChevronDown` 下拉箭头。
+
+- [x] **资产图标接入**：
+  - 新增 `lib/figma/coin-icons.ts`（`resolveCoinIconPath`）与 `components/asset-icon.tsx`（PNG 图标 + 无图资产字母 fallback）。
+  - Portfolio `asset-composition` 图例资产名称前显示图标。
+  - Liquidity `defi-connectivity` ASSET 列、`position-amount-input` 下拉 trigger/选项显示图标。
+  - Trading `swap-amount-block` 用 `AssetIcon` 替换原彩色字母圆点。
+  - 已验证 `npm run build`。
+
+- [x] **Trading Swap Widget 重构（SOURCE / DESTINATION + 多路由 PTB dry-run）**：
+  - UI（Figma node 1:481）：`swap-segmented-control` / `swap-amount-block` / `swap-execution-info`；重构 `swap-widget.tsx`（SOURCE / DESTINATION 分段、PAY / RECEIVE 块、RATE/FEE 卡片）。
+  - 数据层：`TradeFundLocation` / `TradeExecutionRoute`；`resolve-trade-execution.ts`（路由、余额解析、Suilend 拦截）。
+  - `trading-workspace`：`fundSource` / `fundDestination` 状态；按 location 注入 PAY / RECEIVE 余额。
+  - SDK：`buildTradeWalletSwapTx` / `simulateTradeWalletSwap`；`buildNaviTradeRoundTripTx` / `buildNaviTradeReturnTx` / `simulateTradeNavi*`；pipeline step builders。
+  - `use-trade-simulation`：四路由真实 dry-run（wallet_wallet / wallet_navi / navi_navi / navi_wallet）；Suilend 返回明确错误；MVP 限制 `SUI_USDC` 卖 SUI。
+  - 测试：`build-trade-wallet-swap-tx.unit.test.ts`、`build-navi-trade-tx.unit.test.ts`、`trade-wallet-navi.integration.test.ts`。
+  - 更新 `PRODUCT.md`、`ARCHITECTURE.md`。
+  - 已验证 `npm test`（76 passed, 20 skipped）与 `npm run build`。
+
+- [x] **Portfolio 与 Liquidity UI 修复**：
+  - Portfolio：`TOTAL_ASSETS` / `WORKING_CAPITAL` / `IDLE_CAPITAL` 货币格式保留两位小数；`UTILIZATION_RATE` 展示 `toFixed(2)%`；`map-to-portfolio-view` 保留原始浮点利用率（去掉 `Math.round`）。
+  - Liquidity Position Management：滑块与输入框双向联动（`formatAmountFromPercentage` / `percentageFromAmount`）；输入框默认空值 + `placeholder="0.00"`；切换仓位 reset amount/slider。
+  - 移除 TRANSACTION_OVERVIEW 中 Gas fee 行；删除 `simulation-gas-fee-label.ts`。
+  - 已验证 `npm test`（73 passed, 17 skipped）与 `npm run build`。
+
+- [x] **修复 NAVI suppliedBalance 单位换算与写后刷新**：
+  - 根因：NAVI SDK `getLendingPositions` 返回人类可读小数（如 `"1"`），adapter 误作 base units，导致 1 SUI 显示 `0.00`，Portfolio `workingCapital` / `utilizationRate` 异常。
+  - 新增 `lib/data/liquidity/protocols/navi/navi-supply-balance.ts`：`parseNaviSupplyAmountToBaseUnits` + `buildSupplyBalanceMap`（复用 `@deepflow/sdk/amount/parse-base-units`）。
+  - 写后刷新：`invalidateLiquidityPositionCache` + `listPositions({ bustCache })`；NAVI SDK `disableCache`；Supply execute 后 `refetch({ bustCache: true })`。
+  - Portfolio 联动：`liquidity-data-events.ts` + `usePortfolio` 订阅 `notifyLiquidityPositionsChanged`。
+  - 测试：`navi-liquidity-adapter.test.ts`（supply / emode 换算）；已验证 `npm test`（90 passed, 17 skipped）与 `npm run build`。
+
+- [x] **Liquidity Supply 写路径 execute 模式**：
+  - 新增 `NEXT_PUBLIC_LIQUIDITY_WRITE_MODE`（默认 `simulate`；`execute` 时 Supply dry-run 通过后 `dAppKit.signAndExecuteTransaction` 上链）。
+  - `lib/data/liquidity/resolve-liquidity-write-mode.ts`；扩展 `use-supply-withdraw-simulation`（状态 `executing` / `executed` + tx digest）。
+  - Supply 成功展示 Suiscan 链接；execute 后 `refetch` 持仓；Withdraw / bootstrap 仍仅 simulate。
+  - `lib/sui/explorer.ts`；更新 `ARCHITECTURE.md`、`PRODUCT.md`。
+  - 已验证 `npm test`（65 passed, 17 skipped）与 `npm run build`。
+
+- [x] **Portfolio / Trading UI 微调**：
+  - Asset Composition 筛选改为 `ALL` / `NAVI` / `SUILEND` / `WALLET`（`types.ts`、`map-to-portfolio-view.ts`、`use-portfolio.ts`）。
+  - Protocol Exposure Treemap 标签字体统一为黑色。
+  - Portfolio 页移除 `priceWarning` 估值提示 UI（数据层保留）。
+  - 侧栏移除 Security 导航项（`/security` 路由保留可手动访问）。
+  - Trading 页移除 Real-time PTB 组件（删除 `ptb-pipeline.tsx`）；Execute 成功提示改为「模拟通过」。
 
 - [x] **落地页重构**（Figma node 124:71）：
   - 根路由 [`app/page.tsx`](app/page.tsx) 由简易入口改为完整营销落地页（Header / Hero / Products / Roadmap / Partners / Footer）。
@@ -149,26 +198,24 @@
 ## 未完成 / 待处理
 
 - [ ] Security 页映射 `ExecutionPolicy` 字段到 `lib/data/*`。
-- [ ] Liquidity **写路径执行**：simulate 通过后 `dAppKit.signAndExecuteTransaction` 上链。
-- [ ] Trading 有 NAVI 持仓时的纯 withdraw→swap→redeposit PTB（无 bootstrap supply）与实际上链。
+- [ ] Liquidity **Withdraw 写路径 execute**：Supply 已支持；Withdraw 与 bootstrap 仍仅 simulate。
+- [ ] Trading **Suilend 路由**（SOURCE / DESTINATION 含 SUILEND 的真实 dry-run PTB）。
+- [ ] Trading Execute 实际上链（`signAndExecuteTransaction`）。
 - [ ] 扩展 Liquidity 协议适配器：Scallop / Cetus 等（Suilend 已完成）。
-- [ ] Trading Credit Source 扩展 Suilend（当前仅 NAVI bootstrap）。
 - [ ] 创建 Move 合约模块：`automation_vault`、`policy_guard`、`credit_router`。
-- [ ] 浏览器内手动验证：连接 mainnet 钱包后 Liquidity 页 Withdraw（SUI 10）与 Supply **Simulation passed**（SDK 集成已通过；需 Slush 一次授权）。
+- [ ] 浏览器内手动验证：连接 mainnet 钱包后 Liquidity 页 Supply **execute 模式**小额上链（`.env.local` 设 `NEXT_PUBLIC_LIQUIDITY_WRITE_MODE=execute`）；simulate 模式验证 **Simulation passed**（无签名）。
 
 ## 下一步建议
 
-1. 连接 mainnet 钱包，Liquidity 页切换 `[SUILEND]` 池，Supply/Withdraw 点 Simulate 验证 dryRun。
-2. 连接 mainnet 钱包，Trading 页 SUI→USDC、输入 **10 SUI**、点 Execute，确认 bootstrap 模拟成功（4 步 PTB 管线 success，无签名）。
-2. Liquidity simulate 通过后接入 `signAndExecuteTransaction` 实际上链。
-3. Security 页映射 `ExecutionPolicy` 字段。
-4. Trading 有 NAVI 持仓时的纯 withdraw→swap→redeposit PTB（跳过 bootstrap supply）。
+1. 浏览器内手动验证 Trading Swap：WALLET→WALLET / WALLET→NAVI / NAVI→NAVI / NAVI→WALLET dry-run；Suilend 选项应提示不支持。
+2. Security 页映射 `ExecutionPolicy` 字段。
 
 ## 注意事项
 
 - **DeFi 层与 dApp Kit 固定 mainnet**；不再使用 testnet 或 `NEXT_PUBLIC_SUI_NETWORK` 切换。
 - 切 mainnet 后 **`NEXT_PUBLIC_NAVI_ASSETS` 不得使用 `*_TEST` 后缀**（如 `USDC_TEST`）；应使用 `USDC,SUIUSDE,SUI,WAL,DEEP,XBTC` 或删除该变量使用默认白名单。代码会对遗留 `*_TEST` 配置自动映射并 `console.warn`。
 - Liquidity live 模式依赖 `@naviprotocol/lending` 与 `@suilend/sdk`；NAVI 构建时可能对 `getFullnodeUrl` 有 webpack 警告，运行时通过 `lib/shims/mysten-sui-client.ts` 兼容。Suilend 使用 gRPC client，无需 mysten v1 shim。
+- **`NEXT_PUBLIC_LIQUIDITY_WRITE_MODE`**：默认 `simulate`（仅 dry-run）；`execute` 时 **Supply** dry-run 通过后签名上链。Withdraw / bootstrap 始终 simulate。修改后需重启 `npm run dev`。
 - **`NEXT_PUBLIC_SUILEND_ASSETS`** 默认与 NAVI 白名单相同；可选 **`NEXT_PUBLIC_SUILEND_USE_BETA_MARKET=true`** 切换 beta market（由 `@suilend/sdk` 读取）。
 - Suilend 首次 supply（无 obligation）须在 PTB 末尾 `sendObligationToUser`（`finalizeNewSuilendObligationCap`）；已有 obligation 则复用链上 cap id。
 - `next.config.ts` 中 `turbopack.resolveAlias` 必须使用项目相对路径；Webpack `resolve.alias` 用绝对路径。

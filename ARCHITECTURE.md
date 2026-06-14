@@ -302,48 +302,54 @@ TradingWorkspace
 
 - **行情 / 报价**：`lib/data/pricing/deepbook-mid-price-service.ts`（共享 30s 缓存）→ `client.deepbook.midPrice`；报价另用 `getQuoteQuantityOutInputFee` / `getBaseQuantityOutInputFee`。
 - **历史订单**：`getBalanceManagerIds` + DeepBook Indexer `/orders/:pool/:balance_manager_id`。
-- **写路径模拟**：
-  - 有 NAVI 持仓：`@deepflow/sdk/trade` 的 `simulateTrade`（策略校验 + RoutePlan + mock PTB）；DeepBook 报价由 adapter 注入 `DeepbookQuoteInput`。
-  - 无 NAVI SUI 持仓（卖 SUI bootstrap）：`simulateTradeBootstrap` → `buildTradeBootstrapTx` → `dryRunTransaction`；DeepBook 侧使用 `swapExactQuantity`（无需 BalanceManager）。
-- **MVP 限制**：Execute 仅模拟，不 `signAndExecuteTransaction`；有持仓时的真实原子 PTB（纯 withdraw + swap + redeposit）待后续迭代。
+- **写路径模拟**（按 Swap Widget SOURCE × DESTINATION 路由，`resolve-trade-execution.ts`）：
+  - `wallet_wallet`：`simulateTradeWalletSwap` → `buildTradeWalletSwapTx`（钱包 coin → DeepBook swap → transfer 至 sender）
+  - `wallet_navi`：`simulateTradeBootstrap` → `buildTradeBootstrapTx`（supply → withdraw → swap → supply USDC）
+  - `navi_navi`：`simulateTradeNaviRoundTrip` → `buildNaviTradeRoundTripTx`（withdraw → swap → supply USDC）
+  - `navi_wallet`：`simulateTradeNaviReturn` → `buildNaviTradeReturnTx`（withdraw → swap → transfer USDC）
+  - 含 SUILEND 或跨协议：UI 可选，Execute 返回明确错误
+- **MVP 限制**：Execute 仅 dry-run 模拟，不 `signAndExecuteTransaction`；当前仅验证 `SUI_USDC` 卖 SUI 换 USDC。
 
 DeepBook 客户端工厂：`lib/sui/deepbook-client.ts`（Dashboard 读路径）；SDK 集成测试用 `sdk/src/sui/deepbook-client.ts`（同源工厂）。
 
-#### Trading 写路径（SDK bootstrap，mainnet 模拟）
+#### Trading 写路径（SDK，mainnet dry-run）
 
 ```text
 TradingWorkspace（Execute）
   -> useTradeSimulation
-  -> [suppliedBalance < amount 且卖 SUI] simulateTradeBootstrap()
-  -> buildTradeBootstrapTx
-       1. NAVI deposit SUI（钱包 gas coin）
-       2. NAVI withdraw SUI
-       3. DeepBook swapExactQuantity(SUI→USDC, baseCoin=withdrawn)
-       4. transferObjects(baseChange/deepChange) + NAVI deposit USDC
+  -> resolveTradeExecutionRoute(fundSource, fundDestination)
+  -> wallet_wallet: simulateTradeWalletSwap()
+  -> wallet_navi:  simulateTradeBootstrap()
+  -> navi_navi:    simulateTradeNaviRoundTrip()
+  -> navi_wallet:  simulateTradeNaviReturn()
   -> dryRunTransaction
 ```
 
-- **bootstrap 预检**：`walletCoinBalance >= amount`（非 suppliedBalance）；报价由 Dashboard adapter 的 `getQuoteQuantityOutInputFee` / `getBaseQuantityOutInputFee` 计算 `minUsdcOut`（50bps 滑点）与 `deepRequired`。
-- **手续费策略（input-fee）**：bootstrap 与 live 报价刻意配对 **input-fee** 路径——`getQuoteQuantityOutInputFee` 返回 `deepRequired === 0`，`buildTradeBootstrapTx` 传 `deepAmount: 0` 给 `swapExactQuantity`，链上 `pool::swap_exact_quantity` 判定 `pay_with_deep = false`，taker fee 从输入资产（卖 SUI 时从 SUI）扣除，**无需钱包 DEEP**。若改用 `getQuoteQuantityOut`（DEEP-fee）须同步传非零 `deepAmount` 并预检 sender DEEP 余额，否则 dryRun 将失败。
-- **集成测试**：`sdk/tests/trade-bootstrap.integration.test.ts`（门禁 `RUN_MAINNET_INTEGRATION=1` + `INTEGRATION_SENDER`）；断言 input-fee `deepRequired === 0`，并含 DEEP-fee 对照用例（无 DEEP 时 dryRun 预期失败）。
-- **有持仓路径**：仍走 `simulateTrade` mock PTB + 策略校验（非本轮范围）。
+- **bootstrap（wallet_navi）预检**：`walletCoinBalance >= amount`；报价由 `getQuoteQuantityOutInputFee` 计算 `minUsdcOut`（50bps 滑点）与 `deepRequired`。
+- **NAVI 源预检**：`suppliedBalance >= amount`（不自动 bootstrap）。
+- **手续费策略（input-fee）**：`deepRequired === 0`；`swapExactQuantity` 传 `deepAmount: 0`，taker fee 从 SUI 输入扣除。
+- **集成测试**：`trade-bootstrap.integration.test.ts`、`trade-wallet-navi.integration.test.ts`（门禁 `RUN_MAINNET_INTEGRATION=1` + `INTEGRATION_SENDER`）。
 
-#### Liquidity 写路径（SDK，mainnet 模拟）
+#### Liquidity 写路径（SDK，mainnet 模拟 / 可选上链）
 
 ```text
 PositionManagement（Supply / Withdraw 按钮）
   -> useSupplyWithdrawSimulation（按 position.protocolId 路由）
   -> simulateSupplyWithdraw({ protocol: navi | suilend }) / simulateSupplyThenWithdraw()
   -> buildNavi*Tx | buildSuilend*Tx
-  -> dryRunTransaction / devInspectTransaction
+  -> dryRunTransaction（预检，始终执行）
+  -> [NEXT_PUBLIC_LIQUIDITY_WRITE_MODE=execute 且 operation=supply]
+       dAppKit.signAndExecuteTransaction（钱包签名上链）
 ```
+
+- **写路径模式**：`NEXT_PUBLIC_LIQUIDITY_WRITE_MODE` 默认 `simulate`（仅 dry-run）；`execute` 时在 Supply dry-run 通过后调用 `useDAppKit().signAndExecuteTransaction` 实际上链。Withdraw 与 supply→withdraw bootstrap 始终仅模拟。
 
 - **协议路由**：`LiquidityPositionView.protocolId`（`navi` / `suilend`）传入 `@deepflow/sdk/supply-withdraw`；默认仍为 `navi` 以保持向后兼容。
 - **Suilend 新建 obligation**：同 PTB 内 `createObligation` + `depositIntoObligation` 后须调用 `sendObligationToUser`（`finalizeNewSuilendObligationCap`）将 `ObligationOwnerCap` 转回 sender，否则 dryRun 报 `UnusedValueWithoutDrop`。
 - **withdraw bootstrap**：当 `suppliedBalance < amount` 时，Dashboard hook 调用 `simulateSupplyThenWithdraw`（单 PTB 内先 deposit 再 withdraw），用于无协议持仓时的 withdraw 模拟验证；有持仓时仍走纯 `withdraw` PTB。Suilend bootstrap 使用 `withdraw(..., addRefreshCalls=false)` 避免同学 PTB 内链上 obligation 状态未刷新。
 - **dry run**：`simulateTransaction({ checksEnabled: true })`（等价旧 `dryRunTransactionBlock`）
 - **devInspect**：`simulateTransaction({ checksEnabled: false, include: { commandResults: true } })`
-- 模拟不上链、不消耗资产；仍需真实 mainnet sender 地址与 coin objects（supply / bootstrap）或 NAVI supply 余额（纯 withdraw）。
+- 模拟不上链、不消耗资产；`execute` 模式下 Supply 成功签名后会消耗钱包资产。仍需真实 mainnet sender 地址与 coin objects（supply / bootstrap）或 NAVI supply 余额（纯 withdraw）。
 - 集成测试：`sdk/tests/navi-supply-withdraw.integration.test.ts`、`sdk/tests/suilend-supply-withdraw.integration.test.ts`，门禁 `RUN_MAINNET_INTEGRATION=1` + `INTEGRATION_SENDER`。
 
 环境变量：
@@ -356,6 +362,7 @@ PositionManagement（Supply / Withdraw 按钮）
 | `NEXT_PUBLIC_NAVI_ASSETS` | 见上白名单 | 可选，逗号分隔 NAVI Main Market 标的覆盖 |
 | `NEXT_PUBLIC_SUILEND_ASSETS` | 见上白名单 | 可选，逗号分隔 Suilend reserve 标的覆盖 |
 | `NEXT_PUBLIC_SUILEND_USE_BETA_MARKET` | `false` | 可选，`true` 时使用 Suilend beta lending market（`@suilend/sdk` 内置常量） |
+| `NEXT_PUBLIC_LIQUIDITY_WRITE_MODE` | `simulate` | `simulate` 仅 dry-run；`execute` 时 Supply dry-run 通过后签名上链 |
 | `RUN_MAINNET_INTEGRATION` | — | SDK 集成测试开关（仅 `sdk/tests`，非 Dashboard） |
 | `INTEGRATION_SENDER` | — | mainnet 测试地址（集成测试） |
 | `INTEGRATION_ASSET` / `INTEGRATION_AMOUNT` | `USDC` / `1000` | 可选，集成测试 supply 参数 |
