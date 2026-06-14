@@ -15,6 +15,7 @@ export type LiquidityPositionRaw = {
 
 export type LiquidityPositionView = {
   id: string;
+  protocolId: string;
   protocol: string;
   protocolColor: string;
   asset: string;

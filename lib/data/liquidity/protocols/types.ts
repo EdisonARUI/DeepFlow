@@ -1,6 +1,6 @@
 import type { LiquidityPositionRaw } from "../types";
 
-export type LiquidityProtocolId = "navi" | "scallop" | "cetus" | string;
+export type LiquidityProtocolId = "navi" | "suilend" | "scallop" | "cetus" | string;
 
 export type ListLiquidityPositionsParams = {
   ownerAddress?: string;

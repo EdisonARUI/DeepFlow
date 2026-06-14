@@ -4,6 +4,7 @@ import { getLiquidityPositionId } from "./types";
 export function mapToLiquidityView(raw: LiquidityPositionRaw): LiquidityPositionView {
   return {
     id: getLiquidityPositionId(raw.protocolLabel, raw.asset),
+    protocolId: raw.protocol,
     protocol: raw.protocolLabel,
     protocolColor: raw.protocolColor,
     asset: raw.asset,

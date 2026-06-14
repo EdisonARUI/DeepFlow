@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
 import { parseAmountToBaseUnits } from "@deepflow/sdk/amount/parse-base-units";
 import {
+  simulateSupplyThenWithdraw,
   simulateSupplyWithdraw,
   type SupplyWithdrawOperation,
 } from "@deepflow/sdk/supply-withdraw";
@@ -46,9 +47,14 @@ export function useSupplyWithdrawSimulation(operation: SupplyWithdrawOperation) 
         return;
       }
 
-      if (operation === "withdraw" && baseUnits > position.suppliedBalance) {
+      const useWithdrawBootstrap =
+        operation === "withdraw" && baseUnits > position.suppliedBalance;
+
+      if (useWithdrawBootstrap && baseUnits > position.walletCoinBalance) {
         setStatus("error");
-        setError(`协议内 ${position.asset} supply 余额不足`);
+        setError(
+          `钱包 ${position.asset} 余额不足（含 gas 预留），无法 bootstrap supply→withdraw 模拟`,
+        );
         return;
       }
 
@@ -56,13 +62,26 @@ export function useSupplyWithdrawSimulation(operation: SupplyWithdrawOperation) 
       setError(undefined);
 
       try {
-        const result = await simulateSupplyWithdraw({
-          sender: account.address,
-          asset: position.coinType || position.asset,
-          assetSymbol: position.asset,
-          amount: baseUnits,
-          operation,
-        });
+        const asset = position.coinType || position.asset;
+        const protocol =
+          position.protocolId === "suilend" ? ("suilend" as const) : ("navi" as const);
+        const result = useWithdrawBootstrap
+          ? await simulateSupplyThenWithdraw({
+              protocol,
+              sender: account.address,
+              asset,
+              assetSymbol: position.asset,
+              supplyAmount: baseUnits,
+              withdrawAmount: baseUnits,
+            })
+          : await simulateSupplyWithdraw({
+              protocol,
+              sender: account.address,
+              asset,
+              assetSymbol: position.asset,
+              amount: baseUnits,
+              operation,
+            });
 
         if (result.ok) {
           setStatus("success");

@@ -1,6 +1,6 @@
 import type { LiquidityPositionView } from "./types";
 
-export function formatLiquidityTvl(tvlUsd: number | null): string {
+export function formatLiquidityTotalSupply(tvlUsd: number | null): string {
   if (tvlUsd === null) {
     return "-";
   }
@@ -13,9 +13,10 @@ export function formatLiquidityTvl(tvlUsd: number | null): string {
   return `$${tvlUsd.toFixed(0)}`;
 }
 
-export function formatLiquidityApy(supplyApyBps: number): string {
-  const percent = supplyApyBps / 100;
-  return `+${percent.toFixed(1)}%`;
+export function formatLiquidityApr(supplyAprBps: number): string {
+  const percent = supplyAprBps / 100;
+  const fractionDigits = percent < 1 ? 2 : 1;
+  return `+${percent.toFixed(fractionDigits)}%`;
 }
 
 export function formatLiquidityBalance(balance: bigint, decimals: number): string {
@@ -28,8 +29,8 @@ export function formatLiquidityBalance(balance: bigint, decimals: number): strin
 }
 
 export type LiquidityPositionDisplay = LiquidityPositionView & {
-  tvl: string;
-  apy: string;
+  totalSupply: string;
+  apr: string;
   suppliedBalanceDisplay: string;
   walletCoinBalanceDisplay: string;
 };
@@ -39,8 +40,8 @@ export function toLiquidityPositionDisplay(
 ): LiquidityPositionDisplay {
   return {
     ...position,
-    tvl: formatLiquidityTvl(position.tvlUsd),
-    apy: formatLiquidityApy(position.supplyApyBps),
+    totalSupply: formatLiquidityTotalSupply(position.tvlUsd),
+    apr: formatLiquidityApr(position.supplyApyBps),
     suppliedBalanceDisplay: formatLiquidityBalance(
       position.suppliedBalance,
       position.decimals,

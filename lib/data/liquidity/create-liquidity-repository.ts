@@ -1,8 +1,9 @@
 import type { LiquidityRepository } from "./liquidity-repository";
 import { MockLiquidityRepository } from "./mock-liquidity-repository";
 import { LiquidityAggregatorRepository } from "./protocols/liquidity-aggregator-repository";
-import type { LiquidityProtocolId } from "./protocols/types";
+import type { LiquidityProtocolAdapter } from "./protocols/types";
 import { NaviLiquidityAdapter } from "./protocols/navi/navi-liquidity-adapter";
+import { SuilendLiquidityAdapter } from "./protocols/suilend/suilend-liquidity-adapter";
 
 export type LiquidityDataSource = "mock" | "live";
 
@@ -19,12 +20,14 @@ export function createLiquidityRepository(): LiquidityRepository {
     const enabledProtocolIds = protocolCsv
       .split(",")
       .map((s) => s.trim())
-      .filter(Boolean) as LiquidityProtocolId[];
+      .filter(Boolean) as LiquidityProtocolAdapter["protocolId"][];
 
-    const adapters = enabledProtocolIds.flatMap((id) => {
+    const adapters = enabledProtocolIds.flatMap((id): LiquidityProtocolAdapter[] => {
       switch (id) {
         case "navi":
           return [new NaviLiquidityAdapter()];
+        case "suilend":
+          return [new SuilendLiquidityAdapter()];
         // Future protocols:
         // case "scallop": return [new ScallopLiquidityAdapter()]
         // case "cetus": return [new CetusLiquidityAdapter()]
@@ -35,7 +38,7 @@ export function createLiquidityRepository(): LiquidityRepository {
 
     if (adapters.length === 0) {
       throw new Error(
-        "No supported liquidity protocol adapters enabled. Set NEXT_PUBLIC_LIQUIDITY_PROTOCOLS including `navi`.",
+        "No supported liquidity protocol adapters enabled. Set NEXT_PUBLIC_LIQUIDITY_PROTOCOLS including `navi` or `suilend`.",
       );
     }
 
