@@ -2,27 +2,28 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
-import { buildIdlePipelineSteps } from "@deepflow/sdk/trade";
 import { useLiquidityPositions } from "@/lib/data/liquidity/use-liquidity-positions";
+import {
+  findPositionForLocation,
+  resolveBalanceForLocation,
+} from "@/lib/data/trading/resolve-trade-execution";
+import type { TradeFundLocation } from "@/lib/data/trading/types";
 import { useDeepbookOrders } from "@/lib/data/trading/use-deepbook-orders";
 import { useTradeSimulation } from "@/lib/data/trading/use-trade-simulation";
 import { useTradingMarkets } from "@/lib/data/trading/use-trading-markets";
-import type { PtbStepView } from "@/lib/data/trading/types";
 import { getSwapAssets } from "./trading-utils";
 import { DeepbookOrders } from "./deepbook-orders";
 import { MarketPairs } from "./market-pairs";
-import { PtbPipeline } from "./ptb-pipeline";
 import { SwapWidget } from "./swap-widget";
-
-const CREDIT_SOURCES = [{ id: "navi", label: "NAVI" }] as const;
 
 export function TradingWorkspace() {
   const account = useCurrentAccount();
   const { markets, isLoading: marketsLoading, error: marketsError } = useTradingMarkets();
   const [selectedPoolKey, setSelectedPoolKey] = useState("");
   const [isReversed, setIsReversed] = useState(false);
-  const [fromAmount, setFromAmount] = useState("100.00");
-  const [selectedCreditSourceId] = useState<string>(CREDIT_SOURCES[0].id);
+  const [fromAmount, setFromAmount] = useState("");
+  const [fundSource, setFundSource] = useState<TradeFundLocation>("wallet");
+  const [fundDestination, setFundDestination] = useState<TradeFundLocation>("wallet");
 
   const selectedMarket = useMemo(
     () => markets.find((m) => m.poolKey === selectedPoolKey) ?? markets[0],
@@ -43,7 +44,6 @@ export function TradingWorkspace() {
 
   const {
     quote,
-    pipelineSteps,
     status: executeStatus,
     error: executeError,
     refreshQuote,
@@ -51,19 +51,30 @@ export function TradingWorkspace() {
     reset: resetSimulation,
   } = useTradeSimulation();
 
-  const fromAsset = useMemo(() => {
-    if (!selectedMarket) return undefined;
-    return getSwapAssets(selectedMarket, isReversed).from;
+  const { from: fromAsset, to: toAsset } = useMemo(() => {
+    if (!selectedMarket) return { from: undefined, to: undefined };
+    return getSwapAssets(selectedMarket, isReversed);
   }, [selectedMarket, isReversed]);
 
-  const creditPosition = useMemo(() => {
+  const payPosition = useMemo(() => {
     if (!fromAsset) return undefined;
-    return positions.find(
-      (p) =>
-        p.asset.toUpperCase() === fromAsset.toUpperCase() &&
-        p.protocol.toLowerCase().includes(selectedCreditSourceId),
-    );
-  }, [fromAsset, positions, selectedCreditSourceId]);
+    return findPositionForLocation(fundSource, fromAsset, positions);
+  }, [fromAsset, fundSource, positions]);
+
+  const receivePosition = useMemo(() => {
+    if (!toAsset) return undefined;
+    return findPositionForLocation(fundDestination, toAsset, positions);
+  }, [fundDestination, positions, toAsset]);
+
+  const payBalance = useMemo(() => {
+    if (!fromAsset) return 0n;
+    return resolveBalanceForLocation(fundSource, fromAsset, positions);
+  }, [fromAsset, fundSource, positions]);
+
+  const receiveBalance = useMemo(() => {
+    if (!toAsset) return 0n;
+    return resolveBalanceForLocation(fundDestination, toAsset, positions);
+  }, [fundDestination, positions, toAsset]);
 
   useEffect(() => {
     if (!selectedMarket) return;
@@ -76,37 +87,34 @@ export function TradingWorkspace() {
 
   useEffect(() => {
     resetSimulation();
-  }, [selectedPoolKey, isReversed, resetSimulation]);
+  }, [selectedPoolKey, isReversed, fundSource, fundDestination, resetSimulation]);
 
   const handleExecute = useCallback(() => {
-    if (!selectedMarket) return;
+    if (!selectedMarket || !fromAsset || !toAsset) return;
 
     void simulate({
       market: selectedMarket,
       fromAmount,
       isReversed,
-      creditPosition: creditPosition
-        ? {
-            asset: creditPosition.asset,
-            suppliedBalance: creditPosition.suppliedBalance,
-            walletCoinBalance: creditPosition.walletCoinBalance,
-            protocol: creditPosition.protocol,
-            decimals: creditPosition.decimals,
-          }
-        : undefined,
+      fundSource,
+      fundDestination,
+      payBalance,
+      payDecimals: payPosition?.decimals ?? 9,
+      fromAsset,
+      toAsset,
     });
-  }, [creditPosition, fromAmount, isReversed, selectedMarket, simulate]);
-
-  const ptbSteps: PtbStepView[] = useMemo(
-    () =>
-      pipelineSteps.map((step) => ({
-        id: step.id,
-        label: step.label,
-        status: step.status,
-        description: step.description,
-      })),
-    [pipelineSteps],
-  );
+  }, [
+    fromAmount,
+    fromAsset,
+    fundDestination,
+    fundSource,
+    isReversed,
+    payBalance,
+    payPosition?.decimals,
+    selectedMarket,
+    simulate,
+    toAsset,
+  ]);
 
   if (marketsLoading || positionsLoading) {
     return (
@@ -145,20 +153,18 @@ export function TradingWorkspace() {
           onToggleDirection={() => setIsReversed((prev) => !prev)}
           fromAmount={fromAmount}
           onFromAmountChange={setFromAmount}
-          creditBalance={
-            creditPosition
-              ? {
-                  asset: creditPosition.asset,
-                  suppliedBalance: creditPosition.suppliedBalance,
-                  decimals: creditPosition.decimals,
-                }
-              : undefined
-          }
+          fundSource={fundSource}
+          fundDestination={fundDestination}
+          onFundSourceChange={setFundSource}
+          onFundDestinationChange={setFundDestination}
+          payBalance={payBalance}
+          payDecimals={payPosition?.decimals ?? 9}
+          receiveBalance={receiveBalance}
+          receiveDecimals={receivePosition?.decimals ?? 6}
           quote={quote}
           onExecute={handleExecute}
           executeStatus={executeStatus}
           executeError={executeError}
-          creditSourceLabel={CREDIT_SOURCES[0].label}
         />
         <DeepbookOrders
           orders={orders}
@@ -166,7 +172,6 @@ export function TradingWorkspace() {
           emptyMessage={emptyMessage}
         />
       </div>
-      <PtbPipeline steps={ptbSteps.length > 0 ? ptbSteps : buildIdlePipelineSteps()} />
     </div>
   );
 }
