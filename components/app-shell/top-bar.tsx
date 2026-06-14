@@ -12,7 +12,7 @@ export function TopBar() {
   return (
     <header className="fixed top-0 right-0 left-64 z-30 flex h-16 items-center justify-between border-b border-border-default bg-bg-primary px-6">
       <div className="flex items-center gap-2 text-[11px] font-bold tracking-[1.1px] uppercase">
-        <span className="text-text-muted">DEEPFLOW_TERMINAL</span>
+        <span className="text-text-muted">DEEPFLOW</span>
         <span className="text-border-default">/</span>
         <span className="text-accent-cyan">{section}</span>
       </div>

@@ -6,7 +6,6 @@ import {
   ArrowLeftRight,
   Droplets,
   PieChart,
-  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/mock-data";
@@ -15,7 +14,6 @@ const ICONS = {
   PORTFOLIO: PieChart,
   LIQUIDITY: Droplets,
   TRADING: ArrowLeftRight,
-  SECURITY: Shield,
 } as const;
 
 export function Sidebar() {
