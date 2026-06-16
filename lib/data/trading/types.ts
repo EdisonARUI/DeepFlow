@@ -69,6 +69,11 @@ export type TradeFundLocation = "wallet" | "navi" | "suilend";
 export type TradeExecutionRoute =
   | "wallet_wallet"
   | "wallet_navi"
+  | "wallet_suilend"
   | "navi_navi"
   | "navi_wallet"
+  | "navi_suilend"
+  | "suilend_suilend"
+  | "suilend_wallet"
+  | "suilend_navi"
   | "unsupported";

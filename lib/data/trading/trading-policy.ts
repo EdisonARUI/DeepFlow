@@ -8,12 +8,15 @@ export function createDemoTradingPolicy(
   overrides: Partial<ExecutionPolicy> = {},
 ): ExecutionPolicy {
   return {
-    allowedAssets: ["SUI", "USDC", "DEEP", "WAL", "WUSDT", "USDT"],
+    allowedAssets: ["SUI", "USDC", "DEEP", "WAL", "SUIUSDE", "XBTC"],
     allowedMarkets: [
       "DEEPBOOK:SUI-USDC",
       "DEEPBOOK:DEEP-SUI",
-      "DEEPBOOK:WUSDT-USDC",
-      "DEEPBOOK:WAL-USDC",
+      "DEEPBOOK:WAL-SUI",
+      "DEEPBOOK:DEEP-USDC",
+      "DEEPBOOK:SUI-SUIUSDE",
+      "DEEPBOOK:SUIUSDE-USDC",
+      "DEEPBOOK:XBTC-USDC",
     ],
     allowedDestinations: [destination, "navi:SUI-vault", "navi:USDC-vault"],
     maxAmountPerExecution: 1_000_000_000_000n,
