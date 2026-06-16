@@ -2,9 +2,77 @@
 
 ## 当前任务
 
-Trading / Liquidity UI 微调——已完成。
+修复 navi→suilend obligation 误报——已完成。
 
 ## 已完成
+
+- [x] **修复 navi→suilend 误报「请先在 Suilend 存入资产」**：
+  - 根因：`build-navi-swap-then-supply-suilend-tx` 的 `appendSuilendDeposit` 使用 `allowCreateObligation: false`，无 Suilend obligation 时在 PTB 构建前即失败；`wallet_suilend` 为 `true` 故可通过。
+  - 修复：`navi_suilend` 与 `wallet_suilend` 对齐为 `allowCreateObligation: true`；仅 `suilend_suilend` redeposit 保持 `false`。
+  - 更新单元测试与 `PRODUCT.md` / `ARCHITECTURE.md`。
+  - 已验证 `npm test` 与 `npm run build`。
+
+- [x] **Landing Roadmap 动效连线、Partners 横向滚动、Footer 装饰字裁切**：
+  - `landing-roadmap.tsx`：改为 Client Component；移除静态 `roadmap-line.svg`；通过 DOM 测点计算 milestone 图标中心，用 CSS `div` 线段 + `scaleX` 动效逐段绘制；`IntersectionObserver`（threshold 0.25）触发入场；milestone 依次淡入；`ResizeObserver` 响应式重算；`prefers-reduced-motion` 跳过动画。
+  - `landing-partners.tsx`：Grid 改为双份 PARTNERS 无限横向 marquee；`globals.css` 新增 `landing-partners-marquee` keyframes；减少动态效果时降级为 `overflow-x-auto`。
+  - `landing-footer.tsx`：装饰字容器限高 `h-[60px] md:h-[140px]`（字号 50%），仅露出上半部分。
+  - 已验证 `npm run build`。
+
+- [x] **Landing Header 滚动背景与 Roadmap 背景替换**：
+  - `landing-header.tsx`：改为 Client Component；`fixed` → `sticky`；`IntersectionObserver` 监听 `#landing-hero`，Hero 区域透明、滚出后 `bg-[#020617]/95 backdrop-blur-md` 过渡。
+  - `landing-hero.tsx`：添加 `id="landing-hero"` 与 `-mt-20` 与 header 重叠。
+  - `landing-roadmap.tsx`：背景图 `circuit-bg.png` → `contour_map.svg`。
+
+- [x] **Landing Header 与社交图标样式修复**：
+  - `landing-header.tsx`：移除 `backdrop-blur-md`，header 背景完全透明。
+  - `landing-social-links.tsx`：图标按钮背景透明度 `rgba(0,218,248,0.2)` → `0.1`。
+  - Discord 图标：配置 `w-6 h-auto` 保持原始宽高比；`social-discord.svg` 的 `preserveAspectRatio` 改为 `xMidYMid meet`。
+
+- [x] **Landing Hero 波浪密度与垂直铺满微调**：
+  - `lineSpacing` 提升至 9–12px，`frequency` 降至 0.0018–0.0028，细线与波峰更稀疏。
+  - `drawWaves` 按画布高度比例计算层偏移（`spread = height * 0.22`）、`ribbonHeight`、`amplitude`（基准 700px），4 层纵向分布覆盖约 66% 高度。
+  - 容器恢复 `h-[240%] -translate-y-1/2` 纵向溢出，对齐原 PNG 首屏铺满效果。
+  - 已验证 `npm run build`。
+
+- [x] **Landing Hero 波浪背景动效**：
+  - 新增 `app/_components/landing-hero-waves.tsx`：Canvas 多层细线正弦波浪 + `requestAnimationFrame` 相位循环（`phase %= 2π` 无缝衔接）。
+  - 4 层波浪配置（不同振幅/频率/速度/透明度），`ResizeObserver` + `devicePixelRatio` 适配；`visibilitychange` 隐藏时暂停绘制。
+  - `prefers-reduced-motion: reduce` 时仅绘制静态帧，不启动动画循环。
+  - `landing-hero.tsx` 用 `LandingHeroWaves` 替换静态 `hero-wave.png`（PNG 保留作降级资源）。
+  - 已验证 `npm run build`。
+
+- [x] **DeepBook Swap 成交历史数据源**：
+  - 新增 `parse-deepbook-swap-txs.ts`：Sui RPC `FromAddress` 扫描 + DeepBook `swap_exact_*` MoveCall 解析（不依赖 Balance Manager）。
+  - 扩展 `deepbook-indexer-client.ts`：`fetchIndexerTrades` + `enrichSwapsWithIndexerTrades`（按 `digest` 富化数量与方向）。
+  - 重写 `DeepbookTradingAdapter.listUserOrders`：swap 历史路径，移除 `getBalanceManagerIds` + `/orders` 硬依赖。
+  - Mock fixture 全部改为 `FILLED` swap 记录；UI 面板标题改为 `DEEPBOOK_SWAPS`，空状态文案更新。
+  - 更新 `PRODUCT.md`、`ARCHITECTURE.md`。
+  - 已验证 `npm run build`。
+
+- [x] **Trading Suilend 路由支持**：
+  - SDK：新增 `append-suilend-swap-leg.ts`（`withdraw` + `deposit(coin)` 同 PTB 串联）。
+  - 新增 5 条路由 builder / simulate：`wallet_suilend`、`suilend_suilend`、`suilend_wallet`、`navi_suilend`、`suilend_navi`。
+  - Dashboard：`resolveTradeExecutionRoute` 完整 3×3 矩阵；`use-trade-simulation` 接线 9 路由 dry-run。
+  - Pipeline step builders 与 Suilend obligation 友好错误文案。
+  - 测试：`build-suilend-trade-round-trip-tx.unit.test.ts`、`build-navi-swap-then-supply-suilend-tx.unit.test.ts`、`trade-suilend.integration.test.ts`。
+  - 更新 `PRODUCT.md`、`ARCHITECTURE.md`。
+  - 已验证 `npm test`（89 passed, 27 skipped）与 `npm run build`。
+
+- [x] **修复非 SUI-USDC 交易对 PTB 构建错误**：
+  - 根因：`appendDeepbookSwap` 在 `isBaseToCoin=false`（卖 quote 买 base，如 DEEP_SUI 池 SUI→DEEP）时仍传 `baseCoin`，且固定把 swap 第二返回值当 output；导致 UnusedValueWithoutDrop / NAVI deposit TypeMismatch。
+  - 修复：按方向传 `baseCoin` 或 `quoteCoin`；`outputCoin` / `inputChange` 按 `isBaseToCoin` 映射到 `baseResult` / `quoteResult`。
+  - 影响四个 builder：`build-trade-wallet-swap-tx`、`build-wallet-swap-then-supply-tx`、`build-navi-trade-round-trip-tx`、`build-navi-trade-return-tx`。
+  - 测试：DEEP_SUI SUI→DEEP 单元测试；集成测试四路由（门禁 `RUN_MAINNET_INTEGRATION=1`）。
+  - 已验证 `npm test`（87 passed, 25 skipped）与 `npm run build`。
+
+- [x] **Trading 多交易对与图标扩展**：
+  - 移除错误池 `WUSDT_USDC`；`FEATURED_POOL_KEYS` 扩展为 7 池：`SUI_USDC`、`DEEP_SUI`、`WAL_SUI`、`DEEP_USDC`、`SUI_SUIUSDE`、`SUIUSDE_USDC`、`XBTC_USDC`。
+  - SDK：新增 `resolve-deepbook-swap.ts`；泛化四路由 PTB builder / simulate 参数（`inputAsset` / `outputAsset` / `inputAmount` / `minOutput`）；`build-wallet-swap-then-supply-tx` 替代 USDC 专用 builder。
+  - Dashboard：`use-trade-simulation` 放开 7 池双向 swap；`assertValidSwapAssets`；动态 `resolveOutputDecimals`；SUI gas 预留仅 pay SUI 时生效。
+  - UI：新增 `components/pair-asset-icon.tsx`；`market-pairs` 每行展示重叠双币图标。
+  - 估值：`deepbook-usd-price-oracle` 支持 `XBTC_USDC`、`DEEP_USDC`、`WAL_SUI` 等池。
+  - 更新 `PRODUCT.md`、`ARCHITECTURE.md`。
+  - 已验证 `npm test`（84 passed, 21 skipped）与 `npm run build`。
 
 - [x] **Trading / Liquidity UI 微调**：
   - Liquidity `defi-connectivity`：表头与表体各列（PROTOCOL / ASSET / TOTAL SUPPLY / APR / BALANCE）统一左对齐。
@@ -194,12 +262,17 @@ Trading / Liquidity UI 微调——已完成。
   - SDK：`finalizeNewSuilendObligationCap`（`resolve-obligation-cap.ts`）；`build-suilend-supply-tx` / `build-suilend-supply-then-withdraw-tx` deposit 后调用。
   - 测试：集成用例断言不出现 `UnusedValueWithoutDrop`；bootstrap dryRun 期望 `ok: true`。
   - 已验证 `npm test` 与 `npm run build`。
+- [x] **Trading Navi 路径 Execute 模拟修复（修订版）**：
+  - **wallet→navi** 修正为 `buildWalletSwapThenSupplyUsdcTx`（wallet merge SUI → DeepBook swap → NAVI deposit USDC）；Trading 页不再走 `simulateTradeBootstrap`。
+  - 新增 `appendNaviOraclePreamble`：PTB 含 NAVI lending 时在首笔 deposit/withdraw 前刷新链上 oracle（非 DeepBook 报价）。
+  - `use-trade-simulation`：DeepBook 报价用 `baseUnits` 对齐 human amount、`minUsdcOut` 预检、wallet 源 0.5 SUI gas 预留、1502/minUsdcOut 友好错误。
+  - 测试：`build-wallet-swap-then-supply-usdc-tx.unit.test.ts`；集成 `trade-wallet-navi.integration.test.ts` 新增 wallet→NAVI case。
+  - 已验证 `npm test`（52 passed, 21 skipped）。
 
 ## 未完成 / 待处理
 
 - [ ] Security 页映射 `ExecutionPolicy` 字段到 `lib/data/*`。
 - [ ] Liquidity **Withdraw 写路径 execute**：Supply 已支持；Withdraw 与 bootstrap 仍仅 simulate。
-- [ ] Trading **Suilend 路由**（SOURCE / DESTINATION 含 SUILEND 的真实 dry-run PTB）。
 - [ ] Trading Execute 实际上链（`signAndExecuteTransaction`）。
 - [ ] 扩展 Liquidity 协议适配器：Scallop / Cetus 等（Suilend 已完成）。
 - [ ] 创建 Move 合约模块：`automation_vault`、`policy_guard`、`credit_router`。
@@ -224,7 +297,8 @@ Trading / Liquidity UI 微调——已完成。
 - SUI supply 须先 `getCoins` 再 `mergeCoinsPTB(..., useGasCoin: true)`；勿传空 coins 数组。
 - SDK 集成测试 SUI supply 示例：`RUN_MAINNET_INTEGRATION=1 INTEGRATION_SENDER=0x... INTEGRATION_ASSET=SUI INTEGRATION_AMOUNT=10000000000 npm test --workspace @deepflow/sdk -- tests/navi-supply-withdraw.integration.test.ts -t "builds supply"`。
 - Withdraw 无 NAVI 持仓时 UI/SDK 走 **supply→withdraw 单 PTB bootstrap**；集成测试：`-t "supply-then-withdraw"` + `INTEGRATION_WITHDRAW_AMOUNT=10000000000`。
-- Trading 无 NAVI SUI 持仓卖 SUI 时 UI/SDK 走 **supply→withdraw→swap→supply USDC 单 PTB bootstrap**；集成测试：`RUN_MAINNET_INTEGRATION=1 INTEGRATION_SENDER=0x... INTEGRATION_AMOUNT=10000000000 npm test --workspace @deepflow/sdk -- tests/trade-bootstrap.integration.test.ts`。
+- Trading **wallet→navi** 走 `simulateTradeWalletNavi`（非 bootstrap）；集成测试：`RUN_MAINNET_INTEGRATION=1 INTEGRATION_SENDER=0x... INTEGRATION_AMOUNT=1000000000 npm test --workspace @deepflow/sdk -- tests/trade-wallet-navi.integration.test.ts`（1 SUI）。
+- Liquidity 无 NAVI 持仓 withdraw bootstrap 仍用 `buildTradeBootstrapTx` / `simulateTradeBootstrap`；集成：`tests/trade-bootstrap.integration.test.ts`。
 - 页面专属 UI 放在 `app/(dashboard)/{feature}/_components/` 或根路由 `app/_components/`（landing）；跨页共享 UI 放在 `components/`。
 - Dashboard 不是资金安全边界；supply/withdraw 必须走 SDK 策略校验，不得绕过 Policy Engine。
 - 当前测试：`npm test`（SDK Vitest + Dashboard `test:dashboard`）、`npm run build`（Dashboard）。

@@ -215,7 +215,7 @@ Move 合约用于承载最终资金安全约束。
 |------|-----------|------|-------------|
 | `/portfolio` | `107:343` | 资产摘要、协议敞口、交易历史 | `ExecutionResult` 遥测 |
 | `/liquidity` | `1:542` | DeFi 协议表、Supply/Withdraw | `CreditSource` |
-| `/trading` | `1:2` | 交易对、Swap、历史订单、PTB 管线 | `ExecutionIntent` |
+| `/trading` | `1:2` | 交易对、Swap、swap 成交历史、PTB 管线 | `ExecutionIntent` |
 | `/security` | `11:2` | 终点白名单、熔断器、配额、Session | `ExecutionPolicy` |
 
 四页共享 **AppShell**：左侧 256px 侧栏、顶栏面包屑（`DEEPFLOW_TERMINAL / {SECTION}`）、右上角 dApp Kit `ConnectButton`。
@@ -301,14 +301,22 @@ TradingWorkspace
 ```
 
 - **行情 / 报价**：`lib/data/pricing/deepbook-mid-price-service.ts`（共享 30s 缓存）→ `client.deepbook.midPrice`；报价另用 `getQuoteQuantityOutInputFee` / `getBaseQuantityOutInputFee`。
-- **历史订单**：`getBalanceManagerIds` + DeepBook Indexer `/orders/:pool/:balance_manager_id`。
-- **写路径模拟**（按 Swap Widget SOURCE × DESTINATION 路由，`resolve-trade-execution.ts`）：
-  - `wallet_wallet`：`simulateTradeWalletSwap` → `buildTradeWalletSwapTx`（钱包 coin → DeepBook swap → transfer 至 sender）
-  - `wallet_navi`：`simulateTradeBootstrap` → `buildTradeBootstrapTx`（supply → withdraw → swap → supply USDC）
-  - `navi_navi`：`simulateTradeNaviRoundTrip` → `buildNaviTradeRoundTripTx`（withdraw → swap → supply USDC）
-  - `navi_wallet`：`simulateTradeNaviReturn` → `buildNaviTradeReturnTx`（withdraw → swap → transfer USDC）
-  - 含 SUILEND 或跨协议：UI 可选，Execute 返回明确错误
-- **MVP 限制**：Execute 仅 dry-run 模拟，不 `signAndExecuteTransaction`；当前仅验证 `SUI_USDC` 卖 SUI 换 USDC。
+- **Swap 成交历史**：`parse-deepbook-swap-txs.ts`（Sui RPC `FromAddress` + `swap_exact_*` MoveCall 解析）→ 可选 Indexer `/trades/:pool` 按 `digest` 富化；**不依赖** Balance Manager（`swapExactQuantity` 使用临时 BM 链上已删除）。
+- **写路径模拟**（按 Swap Widget SOURCE × DESTINATION 路由，`resolve-trade-execution.ts`；统一模型：**source withdraw / merge → DeepBook swap → destination supply / transfer**）：
+  - `wallet_wallet`：`simulateTradeWalletSwap` → `buildTradeWalletSwapTx`
+  - `wallet_navi`：`simulateTradeWalletNavi` → `buildWalletSwapThenSupplyTx`
+  - `wallet_suilend`：`simulateTradeWalletSuilend` → `buildWalletSwapThenSupplySuilendTx`
+  - `navi_navi`：`simulateTradeNaviRoundTrip` → `buildNaviTradeRoundTripTx`
+  - `navi_wallet`：`simulateTradeNaviReturn` → `buildNaviTradeReturnTx`
+  - `navi_suilend`：`simulateTradeNaviSuilend` → `buildNaviSwapThenSupplySuilendTx`
+  - `suilend_suilend`：`simulateTradeSuilendRoundTrip` → `buildSuilendTradeRoundTripTx`
+  - `suilend_wallet`：`simulateTradeSuilendReturn` → `buildSuilendTradeReturnTx`
+  - `suilend_navi`：`simulateTradeSuilendNavi` → `buildSuilendSwapThenSupplyNaviTx`
+- **Suilend 串联**：`append-suilend-swap-leg.ts` 使用 `withdraw(..., addRefreshCalls=true)` 取出 input coin；destination deposit 使用 `deposit(outputCoin, ...)`（非 `depositIntoObligation`）。`wallet_suilend` / `navi_suilend` 允许 `createObligation` + `sendObligationToUser`；`suilend_suilend` redeposit 复用已有 cap。
+- **报价 vs NAVI 链上 preamble**：
+  - **DeepBook SDK**（`getQuoteQuantityOutInputFee` / `getBaseQuantityOutInputFee`）→ 唯一 swap 报价源、`minOutput`（50bps 滑点）、`deepRequired`；Dashboard 用 `baseUnits` 换算 human amount 再报价；输出精度由 `resolveOutputDecimals` 从 `mainnetCoins` 推导。
+  - **NAVI oracle preamble**（`appendNaviOraclePreamble` → `updateOraclePriceBeforeUserOperationPTB`）→ 仅在 PTB 含 `depositCoinPTB`/`withdrawCoinPTB` 时于首笔 lending 操作前刷新**链上** oracle 状态（非报价）；`wallet_wallet` 无 NAVI 操作故跳过。
+- **MVP 限制**：Execute 仅 dry-run 模拟，不 `signAndExecuteTransaction`；支持 7 个精选 DeepBook 池的双向 swap（`FEATURED_POOL_KEYS`）。
 
 DeepBook 客户端工厂：`lib/sui/deepbook-client.ts`（Dashboard 读路径）；SDK 集成测试用 `sdk/src/sui/deepbook-client.ts`（同源工厂）。
 
@@ -318,17 +326,23 @@ DeepBook 客户端工厂：`lib/sui/deepbook-client.ts`（Dashboard 读路径）
 TradingWorkspace（Execute）
   -> useTradeSimulation
   -> resolveTradeExecutionRoute(fundSource, fundDestination)
-  -> wallet_wallet: simulateTradeWalletSwap()
-  -> wallet_navi:  simulateTradeBootstrap()
-  -> navi_navi:    simulateTradeNaviRoundTrip()
-  -> navi_wallet:  simulateTradeNaviReturn()
+  -> wallet_wallet:    simulateTradeWalletSwap()
+  -> wallet_navi:      simulateTradeWalletNavi()
+  -> wallet_suilend:   simulateTradeWalletSuilend()
+  -> navi_navi:        simulateTradeNaviRoundTrip()
+  -> navi_wallet:      simulateTradeNaviReturn()
+  -> navi_suilend:     simulateTradeNaviSuilend()
+  -> suilend_suilend:  simulateTradeSuilendRoundTrip()
+  -> suilend_wallet:   simulateTradeSuilendReturn()
+  -> suilend_navi:     simulateTradeSuilendNavi()
   -> dryRunTransaction
 ```
 
-- **bootstrap（wallet_navi）预检**：`walletCoinBalance >= amount`；报价由 `getQuoteQuantityOutInputFee` 计算 `minUsdcOut`（50bps 滑点）与 `deepRequired`。
-- **NAVI 源预检**：`suppliedBalance >= amount`（不自动 bootstrap）。
+- **wallet 源预检**：`walletCoinBalance >= amount`；wallet 源另预留 **0.5 SUI** gas（`useGasCoin` merge）。
+- **NAVI / Suilend 源预检**：`suppliedBalance >= amount`（不自动 bootstrap）；Suilend 源另要求已有 obligation。
 - **手续费策略（input-fee）**：`deepRequired === 0`；`swapExactQuantity` 传 `deepAmount: 0`，taker fee 从 SUI 输入扣除。
-- **集成测试**：`trade-bootstrap.integration.test.ts`、`trade-wallet-navi.integration.test.ts`（门禁 `RUN_MAINNET_INTEGRATION=1` + `INTEGRATION_SENDER`）。
+- **Liquidity bootstrap**：`buildTradeBootstrapTx`（supply→withdraw→swap→supply USDC）仍保留供 Liquidity 页无持仓 withdraw 场景；Trading 页 **不再** 使用该路径。
+- **集成测试**：`trade-wallet-navi.integration.test.ts`、`trade-suilend.integration.test.ts`（门禁 `RUN_MAINNET_INTEGRATION=1` + `INTEGRATION_SENDER` + 可选 `INTEGRATION_AMOUNT`）。
 
 #### Liquidity 写路径（SDK，mainnet 模拟 / 可选上链）
 
