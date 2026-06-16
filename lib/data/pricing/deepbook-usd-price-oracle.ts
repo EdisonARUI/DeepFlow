@@ -16,7 +16,7 @@ function normalizeSymbol(asset: string): string {
 
 function isStablecoin(asset: string): boolean {
   const upper = normalizeSymbol(asset);
-  return upper === "USDC" || upper === "WUSDT" || upper === "SUIUSDE";
+  return upper === "USDC" || upper === "SUIUSDE";
 }
 
 function resolveFallbackPrice(
@@ -36,20 +36,27 @@ export function collectPoolKeysForAssets(assets: readonly string[]): string[] {
   for (const asset of assets) {
     const upper = normalizeSymbol(asset);
 
-    if (upper === "WUSDT" && isPoolAvailable("WUSDT_USDC")) {
-      keys.add("WUSDT_USDC");
-    }
-
-    if (upper === "SUI" || upper === "DEEP" || upper === "VSUI") {
+    if (upper === "SUI" || upper === "VSUI") {
       if (isPoolAvailable("SUI_USDC")) keys.add("SUI_USDC");
     }
 
-    if (upper === "WAL" && isPoolAvailable("WAL_USDC")) {
-      keys.add("WAL_USDC");
+    if (upper === "WAL") {
+      if (isPoolAvailable("WAL_SUI")) keys.add("WAL_SUI");
+      if (isPoolAvailable("SUI_USDC")) keys.add("SUI_USDC");
     }
 
-    if (upper === "DEEP" && isPoolAvailable("DEEP_SUI")) {
-      keys.add("DEEP_SUI");
+    if (upper === "DEEP") {
+      if (isPoolAvailable("DEEP_USDC")) keys.add("DEEP_USDC");
+      if (isPoolAvailable("DEEP_SUI")) keys.add("DEEP_SUI");
+      if (isPoolAvailable("SUI_USDC")) keys.add("SUI_USDC");
+    }
+
+    if (upper === "SUIUSDE" && isPoolAvailable("SUIUSDE_USDC")) {
+      keys.add("SUIUSDE_USDC");
+    }
+
+    if (upper === "XBTC" && isPoolAvailable("XBTC_USDC")) {
+      keys.add("XBTC_USDC");
     }
   }
 
@@ -65,9 +72,6 @@ export function resolveAssetUsdPrice(
   midPrices: Record<string, number>,
 ): number | undefined {
   if (isStablecoin(asset)) {
-    if (normalizeSymbol(asset) === "WUSDT" && midPrices.WUSDT_USDC !== undefined) {
-      return midPrices.WUSDT_USDC;
-    }
     return 1;
   }
 
@@ -79,11 +83,25 @@ export function resolveAssetUsdPrice(
   }
 
   if (upper === "WAL") {
-    const walUsd = midPrices.WAL_USDC;
-    return walUsd !== undefined && Number.isFinite(walUsd) ? walUsd : undefined;
+    const walInSui = midPrices.WAL_SUI;
+    const suiUsd = midPrices.SUI_USDC;
+    if (
+      walInSui !== undefined &&
+      suiUsd !== undefined &&
+      Number.isFinite(walInSui) &&
+      Number.isFinite(suiUsd)
+    ) {
+      return walInSui * suiUsd;
+    }
+    return undefined;
   }
 
   if (upper === "DEEP") {
+    const deepUsd = midPrices.DEEP_USDC;
+    if (deepUsd !== undefined && Number.isFinite(deepUsd)) {
+      return deepUsd;
+    }
+
     const deepInSui = midPrices.DEEP_SUI;
     const suiUsd = midPrices.SUI_USDC;
     if (
@@ -95,6 +113,11 @@ export function resolveAssetUsdPrice(
       return deepInSui * suiUsd;
     }
     return undefined;
+  }
+
+  if (upper === "XBTC") {
+    const xbtcUsd = midPrices.XBTC_USDC;
+    return xbtcUsd !== undefined && Number.isFinite(xbtcUsd) ? xbtcUsd : undefined;
   }
 
   return undefined;

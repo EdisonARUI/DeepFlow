@@ -9,55 +9,59 @@ import {
 const SAMPLE_MID_PRICES = {
   SUI_USDC: 0.748,
   DEEP_SUI: 0.0842,
-  WAL_USDC: 0.42,
-  WUSDT_USDC: 1.0001,
+  DEEP_USDC: 0.29,
+  WAL_SUI: 0.122,
+  XBTC_USDC: 95000,
 };
 
 describe("resolveAssetUsdPrice", () => {
   it("anchors stablecoins to USDC", () => {
     expect(resolveAssetUsdPrice("USDC", SAMPLE_MID_PRICES)).toBe(1);
     expect(resolveAssetUsdPrice("suiUSDe", SAMPLE_MID_PRICES)).toBe(1);
-    expect(resolveAssetUsdPrice("WUSDT", SAMPLE_MID_PRICES)).toBe(1.0001);
   });
 
   it("uses SUI_USDC mid price for SUI", () => {
     expect(resolveAssetUsdPrice("SUI", SAMPLE_MID_PRICES)).toBe(0.748);
   });
 
-  it("derives DEEP USDC price via DEEP_SUI cross rate", () => {
-    expect(resolveAssetUsdPrice("DEEP", SAMPLE_MID_PRICES)).toBeCloseTo(
-      0.0842 * 0.748,
+  it("prefers DEEP_USDC direct price for DEEP", () => {
+    expect(resolveAssetUsdPrice("DEEP", SAMPLE_MID_PRICES)).toBe(0.29);
+  });
+
+  it("derives WAL USDC price via WAL_SUI cross rate", () => {
+    expect(resolveAssetUsdPrice("WAL", SAMPLE_MID_PRICES)).toBeCloseTo(
+      0.122 * 0.748,
       6,
     );
   });
 
-  it("uses WAL_USDC mid price for WAL", () => {
-    expect(resolveAssetUsdPrice("WAL", SAMPLE_MID_PRICES)).toBe(0.42);
+  it("uses XBTC_USDC mid price for XBTC", () => {
+    expect(resolveAssetUsdPrice("XBTC", SAMPLE_MID_PRICES)).toBe(95000);
   });
 });
 
 describe("collectPoolKeysForAssets", () => {
   it("collects pools needed for mixed portfolio assets", () => {
-    const keys = collectPoolKeysForAssets(["SUI", "DEEP", "WAL", "USDC", "XBTC"]);
+    const keys = collectPoolKeysForAssets(["SUI", "DEEP", "WAL", "USDC", "XBTC", "SUIUSDE"]);
     expect(keys).toContain("SUI_USDC");
-    expect(keys).toContain("DEEP_SUI");
-    expect(keys).toContain("WAL_USDC");
-    expect(keys).not.toContain("WUSDT_USDC");
+    expect(keys).toContain("DEEP_USDC");
+    expect(keys).toContain("WAL_SUI");
+    expect(keys).toContain("XBTC_USDC");
+    expect(keys).toContain("SUIUSDE_USDC");
   });
 });
 
 describe("buildUsdPriceMap", () => {
-  it("falls back to static prices for assets without DeepBook pools", () => {
-    const fallback = { XBTC: 95000 };
+  it("uses live XBTC_USDC price when available", () => {
     const { prices, fallbackUsed, missing } = buildUsdPriceMap(
       ["SUI", "XBTC"],
       SAMPLE_MID_PRICES,
-      fallback,
+      {},
     );
 
     expect(prices.SUI).toBe(0.748);
     expect(prices.XBTC).toBe(95000);
-    expect(fallbackUsed).toEqual(["XBTC"]);
+    expect(fallbackUsed).toEqual([]);
     expect(missing).toEqual([]);
   });
 
