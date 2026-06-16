@@ -119,3 +119,16 @@
     @apply font-sans;
   }
 }
+
+@keyframes landing-partners-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@utility animate-landing-partners-marquee {
+  animation: landing-partners-marquee 30s linear infinite;
+}
