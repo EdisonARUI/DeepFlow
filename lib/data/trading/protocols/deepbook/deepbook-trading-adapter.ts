@@ -9,11 +9,7 @@ import {
   mapToDeepbookOrderViews,
   mapToTradingMarketViews,
 } from "../../map-to-trading-view";
-import type {
-  DeepbookOrderRaw,
-  DeepbookOrderStatus,
-  TradingMarketRaw,
-} from "../../types";
+import type { DeepbookOrderRaw, TradingMarketRaw } from "../../types";
 import type {
   GetMarketQuoteParams,
   ListMarketsResult,
@@ -21,21 +17,12 @@ import type {
   ListUserOrdersResult,
 } from "../../trading-repository";
 import type { TradeQuoteView } from "../../types";
-import { fetchIndexerOrders } from "./deepbook-indexer-client";
-
-function mapIndexerStatus(status: string, filled: number, total: number): DeepbookOrderStatus {
-  const normalized = status.toUpperCase();
-  if (normalized === "CANCELED" || normalized === "CANCELLED") return "CANCELED";
-  if (normalized === "FILLED" || filled >= total) return "FILLED";
-  if (filled > 0) return "PARTIAL";
-  return "PLACED";
-}
-
-function mapIndexerSide(type: string): "BUY" | "SELL" {
-  return type.toLowerCase().includes("bid") || type.toLowerCase() === "buy"
-    ? "BUY"
-    : "SELL";
-}
+import {
+  enrichSwapsWithIndexerTrades,
+  fetchIndexerTrades,
+  type IndexerTrade,
+} from "./deepbook-indexer-client";
+import { parseDeepbookSwapTxs } from "./parse-deepbook-swap-txs";
 
 function formatSwapFeeLabel(
   deepRequired: number,
@@ -47,6 +34,42 @@ function formatSwapFeeLabel(
   const scalar = mainnetCoins.DEEP?.scalar ?? 1e6;
   const human = deepRequired / scalar;
   return `~${human.toFixed(4)} DEEP`;
+}
+
+async function enrichSwapsFromIndexer(
+  swaps: DeepbookOrderRaw[],
+): Promise<DeepbookOrderRaw[]> {
+  if (swaps.length === 0) return swaps;
+
+  const poolKeys = [...new Set(swaps.map((swap) => swap.poolKey))];
+  const tradesByDigest = new Map<string, IndexerTrade[]>();
+
+  const minPlacedAtMs = Math.min(...swaps.map((swap) => swap.placedAtMs));
+  const maxPlacedAtMs = Math.max(...swaps.map((swap) => swap.placedAtMs));
+  const startTime = Math.floor(minPlacedAtMs / 1000) - 60;
+  const endTime = Math.floor(maxPlacedAtMs / 1000) + 60;
+
+  await Promise.all(
+    poolKeys.map(async (poolKey) => {
+      try {
+        const trades = await fetchIndexerTrades({
+          poolName: poolKey,
+          limit: 100,
+          startTime,
+          endTime,
+        });
+        for (const trade of trades) {
+          const existing = tradesByDigest.get(trade.digest) ?? [];
+          existing.push(trade);
+          tradesByDigest.set(trade.digest, existing);
+        }
+      } catch {
+        // Indexer 富化失败时降级为 RPC 解析结果
+      }
+    }),
+  );
+
+  return enrichSwapsWithIndexerTrades(swaps, tradesByDigest);
 }
 
 export class DeepbookTradingAdapter {
@@ -126,59 +149,29 @@ export class DeepbookTradingAdapter {
     if (!owner) {
       return {
         orders: [],
-        emptyMessage: "连接钱包以查看 DeepBook 历史订单",
+        emptyMessage: "连接钱包以查看 DeepBook swap 历史",
       };
     }
 
-    const client = createDeepbookClient(owner);
-    const managerIds = await client.deepbook.getBalanceManagerIds(owner);
+    try {
+      const rpcSwaps = await parseDeepbookSwapTxs({
+        owner,
+        poolKey,
+        limit,
+      });
+      const enrichedSwaps = await enrichSwapsFromIndexer(rpcSwaps);
 
-    if (managerIds.length === 0) {
+      return {
+        orders: mapToDeepbookOrderViews(enrichedSwaps),
+        emptyMessage:
+          enrichedSwaps.length === 0 ? "暂无 DeepBook swap 记录" : undefined,
+      };
+    } catch {
       return {
         orders: [],
-        emptyMessage: "未找到 Balance Manager，请先在 DeepBook 创建并充值",
+        emptyMessage: "DeepBook swap 历史查询失败，请稍后重试",
       };
     }
-
-    const poolKeys = poolKey ? [poolKey] : resolveFeaturedPoolKeys();
-    const orderRaws: DeepbookOrderRaw[] = [];
-
-    for (const managerId of managerIds) {
-      for (const key of poolKeys) {
-        try {
-          const indexerOrders = await fetchIndexerOrders({
-            poolName: key,
-            balanceManagerId: managerId,
-            limit,
-            statuses: ["Placed", "Filled", "Canceled"],
-          });
-
-          for (const order of indexerOrders) {
-            orderRaws.push({
-              orderId: order.order_id,
-              poolKey: key,
-              side: mapIndexerSide(order.type),
-              quantity: order.original_quantity,
-              filledQuantity: order.filled_quantity,
-              status: mapIndexerStatus(
-                order.current_status,
-                order.filled_quantity,
-                order.original_quantity,
-              ),
-              placedAtMs: order.placed_at,
-            });
-          }
-        } catch {
-          // 单池查询失败时跳过，避免整页报错
-        }
-      }
-    }
-
-    orderRaws.sort((a, b) => b.placedAtMs - a.placedAtMs);
-
-    return {
-      orders: mapToDeepbookOrderViews(orderRaws.slice(0, limit)),
-    };
   }
 
   private async getMarketMidPrice(poolKey: string): Promise<number> {
