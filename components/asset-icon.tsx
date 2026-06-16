@@ -6,8 +6,8 @@ const TOKEN_BADGE_COLORS: Record<string, string> = {
   USDC: "bg-blue-700",
   DEEP: "bg-emerald-600",
   WAL: "bg-purple-600",
-  WUSDT: "bg-teal-600",
-  USDT: "bg-teal-600",
+  SUIUSDE: "bg-lime-600",
+  XBTC: "bg-orange-600",
 };
 
 const SIZE_CLASSES = {
