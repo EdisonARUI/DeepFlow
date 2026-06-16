@@ -82,8 +82,9 @@ export function TradingWorkspace() {
       market: selectedMarket,
       fromAmount,
       isReversed,
+      payDecimals: payPosition?.decimals ?? 9,
     });
-  }, [fromAmount, isReversed, refreshQuote, selectedMarket]);
+  }, [fromAmount, isReversed, payPosition?.decimals, refreshQuote, selectedMarket]);
 
   useEffect(() => {
     resetSimulation();

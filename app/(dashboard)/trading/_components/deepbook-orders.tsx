@@ -25,18 +25,18 @@ export function DeepbookOrders({
         <div className="flex items-center gap-2 text-text-muted">
           <FileText className="size-3" />
           <span className="text-[11px] font-bold tracking-[1.1px] uppercase">
-            DEEPBOOK_ORDERS
+            DEEPBOOK_SWAPS
           </span>
         </div>
       }
     >
       <ScrollArea className="h-[680px]">
         {isLoading && (
-          <p className="px-3 py-3 text-[12px] text-text-muted">Loading orders…</p>
+          <p className="px-3 py-3 text-[12px] text-text-muted">Loading swaps…</p>
         )}
         {!isLoading && orders.length === 0 && (
           <p className="px-3 py-3 text-[12px] text-text-muted">
-            {emptyMessage ?? "暂无历史订单"}
+            {emptyMessage ?? "暂无 DeepBook swap 记录"}
           </p>
         )}
         {!isLoading &&

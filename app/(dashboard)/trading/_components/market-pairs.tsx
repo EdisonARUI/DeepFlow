@@ -1,6 +1,7 @@
 "use client";
 
 import { LayoutGrid } from "lucide-react";
+import { PairAssetIcon } from "@/components/pair-asset-icon";
 import { TerminalLabel } from "@/components/terminal-label";
 import { TerminalPanel } from "@/components/terminal-panel";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -48,7 +49,13 @@ export function MarketPairs({
                   : "hover:bg-bg-panel-header/50",
               )}
             >
-              <span>{market.pair}</span>
+              <div className="flex items-center gap-2">
+                <PairAssetIcon
+                  baseAsset={market.baseAsset}
+                  quoteAsset={market.quoteAsset}
+                />
+                <span>{market.pair}</span>
+              </div>
               <span className="text-text-muted">{market.price}</span>
             </button>
           ))}
