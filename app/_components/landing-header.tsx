@@ -1,9 +1,35 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 import { LaunchAppLink } from "./launch-app-link";
 import { LandingSocialLinks } from "./landing-social-links";
 
 export function LandingHeader() {
+  const [isOverHero, setIsOverHero] = useState(true);
+
+  useEffect(() => {
+    const hero = document.getElementById("landing-hero");
+    if (!hero) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsOverHero(entry.isIntersecting);
+      },
+      { threshold: 0, rootMargin: "-80px 0px 0px 0px" },
+    );
+
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <header className="fixed top-0 left-0 z-50 w-full backdrop-blur-md">
+    <header
+      className={cn(
+        "sticky top-0 z-50 w-full transition-[background-color,backdrop-filter] duration-300",
+        isOverHero ? "bg-transparent" : "bg-[#020617]/95 backdrop-blur-md",
+      )}
+    >
       <div className="mx-auto flex h-20 max-w-[1280px] items-center justify-between px-5 md:px-10">
         <div className="flex items-center gap-3">
           <img
@@ -13,7 +39,7 @@ export function LandingHeader() {
             height={32}
             className="h-8 w-auto"
           />
-          <span className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-white md:text-4xl">
+          <span className="font-[family-name:var(--font-display)] text-xl font-bold tracking-tight text-white md:text-2xl">
             DEEPFLOW
           </span>
         </div>

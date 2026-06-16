@@ -1,14 +1,14 @@
 import { LaunchAppLink } from "./launch-app-link";
+import { LandingHeroWaves } from "./landing-hero-waves";
 
 export function LandingHero() {
   return (
-    <section className="relative flex min-h-[696px] flex-col items-center justify-end overflow-hidden border-b border-[rgba(59,73,76,0.2)] pb-10 pt-40 md:pb-[41px] md:pt-[400px]">
+    <section
+      id="landing-hero"
+      className="relative -mt-20 flex min-h-[696px] flex-col items-center justify-end overflow-hidden border-b border-[rgba(59,73,76,0.2)] pb-10 pt-40 md:pb-[41px] md:pt-[400px]"
+    >
       <div className="pointer-events-none absolute inset-0 opacity-50">
-        <img
-          src="/figma/landing/hero-wave.png"
-          alt=""
-          className="absolute left-0 top-1/2 h-[245%] w-full max-w-none -translate-y-1/2 object-cover"
-        />
+        <LandingHeroWaves />
       </div>
       <div className="relative z-10 mx-auto flex w-full max-w-[1280px] flex-col items-center gap-5 px-5 md:px-10">
         <h1 className="max-w-4xl text-center font-[family-name:var(--font-display)] text-4xl font-bold tracking-[-2.56px] text-[#e0e3e5] md:text-[64px] md:leading-[70.4px]">

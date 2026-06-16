@@ -20,8 +20,8 @@ export function LandingFooter() {
           </div>
         </div>
       </div>
-      <div className="pointer-events-none mt-8 flex justify-center overflow-hidden px-8">
-        <p className="bg-gradient-to-b from-[rgba(255,255,255,0.1)] to-transparent bg-clip-text font-[family-name:var(--font-display)] text-[120px] font-bold leading-none tracking-[-14px] text-transparent md:text-[281px] md:tracking-[-14px]">
+      <div className="pointer-events-none mt-8 h-[60px] overflow-hidden px-8 md:h-[140px]">
+        <p className="bg-gradient-to-b from-[rgba(255,255,255,0.1)] to-transparent bg-clip-text text-center font-[family-name:var(--font-display)] text-[120px] font-bold leading-none tracking-[-14px] text-transparent md:text-[281px] md:tracking-[-14px]">
           DeepFlow
         </p>
       </div>
