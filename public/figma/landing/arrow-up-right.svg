@@ -1,0 +1,32 @@
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="16" height="16" fill="#F5F5F5"/>
+<g id="Frame 20">
+<rect width="1280" height="3833" transform="translate(-777 -1268)" fill="black"/>
+<g id="portfolio">
+<rect width="1280" height="680" transform="translate(-777 -542)" fill="black"/>
+<g id="Frame 22">
+<rect x="-757" y="-532" width="1240" height="660" rx="45" fill="#003D7A"/>
+<g id="Html &#226;&#134;&#146; Body">
+<g id="Button" filter="url(#filter0_d_0_1)">
+<rect x="-112" y="-8" width="160" height="32" rx="16" fill="white" shape-rendering="crispEdges"/>
+<g id="Arrow up-right">
+<path id="Icon" d="M4.6665 11.3332L11.3332 4.6665M11.3332 11.3332V4.6665H4.6665" stroke="#1E1E1E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+<defs>
+<filter id="filter0_d_0_1" x="-132" y="-28" width="200" height="72" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset/>
+<feGaussianBlur stdDeviation="10"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0.729412 0 0 0 0 0.94902 0 0 0 0 1 0 0 0 0.2 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_1"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_0_1" result="shape"/>
+</filter>
+</defs>
+</svg>

@@ -1,0 +1,7 @@
+<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Mail">
+<rect x="0.5" y="0.5" width="63" height="63" rx="31.5" fill="var(--fill-0, white)"/>
+<rect x="0.5" y="0.5" width="63" height="63" rx="31.5" stroke="var(--stroke-0, black)"/>
+<path id="Icon" d="M47 23C47 21.35 45.65 20 44 20H20C18.35 20 17 21.35 17 23M47 23V41C47 42.65 45.65 44 44 44H20C18.35 44 17 42.65 17 41V23M47 23L32 33.5L17 23" stroke="var(--stroke-0, #1E1E1E)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</svg>
