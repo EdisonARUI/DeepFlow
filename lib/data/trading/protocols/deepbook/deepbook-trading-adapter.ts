@@ -29,7 +29,7 @@ function formatSwapFeeLabel(
   inputAsset: string,
 ): string {
   if (!Number.isFinite(deepRequired) || deepRequired <= 0) {
-    return `手续费从 ${inputAsset} 扣除`;
+    return `Fee deducted from ${inputAsset}`;
   }
   const scalar = mainnetCoins.DEEP?.scalar ?? 1e6;
   const human = deepRequired / scalar;
@@ -149,7 +149,7 @@ export class DeepbookTradingAdapter {
     if (!owner) {
       return {
         orders: [],
-        emptyMessage: "连接钱包以查看 DeepBook swap 历史",
+        emptyMessage: "Connect wallet to view DeepBook swap history",
       };
     }
 
@@ -164,12 +164,12 @@ export class DeepbookTradingAdapter {
       return {
         orders: mapToDeepbookOrderViews(enrichedSwaps),
         emptyMessage:
-          enrichedSwaps.length === 0 ? "暂无 DeepBook swap 记录" : undefined,
+          enrichedSwaps.length === 0 ? "No DeepBook swaps yet" : undefined,
       };
     } catch {
       return {
         orders: [],
-        emptyMessage: "DeepBook swap 历史查询失败，请稍后重试",
+        emptyMessage: "Failed to load DeepBook swap history. Please try again.",
       };
     }
   }

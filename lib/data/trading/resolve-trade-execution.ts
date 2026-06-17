@@ -74,7 +74,7 @@ export const SUPPORTED_TRADE_POOL_KEYS = FEATURED_POOL_KEYS;
 
 export function assertSupportedTradePool(poolKey: string): string | undefined {
   if (!SUPPORTED_TRADE_POOL_KEYS.includes(poolKey as (typeof SUPPORTED_TRADE_POOL_KEYS)[number])) {
-    return `当前 Execute 模拟仅支持精选 DeepBook 池：${SUPPORTED_TRADE_POOL_KEYS.join("、")}`;
+    return `Current execute simulation supports featured DeepBook pools only: ${SUPPORTED_TRADE_POOL_KEYS.join(", ")}`;
   }
   return undefined;
 }
@@ -96,7 +96,7 @@ export function assertValidSwapAssets(
     (normalizedFrom === normalizedQuote && normalizedTo === normalizedBase);
 
   if (!validPair) {
-    return `${fromAsset}→${toAsset} 与池 ${poolKey}（${baseAsset}/${quoteAsset}）不匹配`;
+    return `${fromAsset}->${toAsset} does not match pool ${poolKey} (${baseAsset}/${quoteAsset})`;
   }
 
   return undefined;
