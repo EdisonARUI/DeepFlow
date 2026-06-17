@@ -18,6 +18,12 @@ const nextConfig: NextConfig = {
     "@suilend/sdk",
     "@suilend/sui-fe",
   ],
+  // Keep recently visited routes warm in dev to reduce re-compiling
+  // when switching between portfolio/liquidity/trading frequently.
+  onDemandEntries: {
+    maxInactiveAge: 10 * 60 * 1000,
+    pagesBufferLength: 10,
+  },
   outputFileTracingRoot: path.join(__dirname),
   turbopack: {
     resolveAlias: {
