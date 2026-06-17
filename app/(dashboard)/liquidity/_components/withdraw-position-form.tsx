@@ -65,8 +65,8 @@ export function WithdrawPositionForm({
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-      <div className="space-y-3">
+    <div className="grid gap-5 lg:grid-cols-2">
+      <div className="space-y-5">
         <PositionProtocolBanner
           mode="withdraw"
           protocol={selectedPosition.protocol}

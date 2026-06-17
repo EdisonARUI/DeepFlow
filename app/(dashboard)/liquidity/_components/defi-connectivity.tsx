@@ -1,9 +1,7 @@
 "use client";
 
 import { AssetIcon } from "@/components/asset-icon";
-import { Building2 } from "lucide-react";
-import { TerminalLabel } from "@/components/terminal-label";
-import { TerminalPanel } from "@/components/terminal-panel";
+import { DashboardPanel } from "@/components/dashboard-panel";
 import {
   Table,
   TableBody,
@@ -21,24 +19,18 @@ type DeFiConnectivityProps = {
   onSelect: (id: string) => void;
 };
 
+const COLUMNS = ["PROTOCOL", "ASSET", "TVL", "APY", "BALANCE"] as const;
+
 export function DeFiConnectivity({ positions, selectedId, onSelect }: DeFiConnectivityProps) {
   return (
-    <TerminalPanel
-      contentClassName="p-0"
-      title={
-        <div className="flex items-center gap-2">
-          <Building2 className="size-3.5 text-text-primary" />
-          <TerminalLabel className="text-text-primary">DEFI_CONNECTIVITY</TerminalLabel>
-        </div>
-      }
-    >
+    <DashboardPanel title="DEFI" contentClassName="overflow-auto p-4">
       <Table>
         <TableHeader>
-          <TableRow className="border-border-default hover:bg-transparent">
-            {["PROTOCOL", "ASSET", "TOTAL SUPPLY", "APR", "BALANCE"].map((col) => (
+          <TableRow className="border-border-muted/30 hover:bg-transparent">
+            {COLUMNS.map((col) => (
               <TableHead
                 key={col}
-                className="text-[11px] font-normal tracking-[0.6px] text-text-muted uppercase"
+                className="p-4 text-[11px] font-bold tracking-[0.6px] text-text-muted uppercase"
               >
                 {col}
               </TableHead>
@@ -46,43 +38,72 @@ export function DeFiConnectivity({ positions, selectedId, onSelect }: DeFiConnec
           </TableRow>
         </TableHeader>
         <TableBody>
-          {positions.map((position) => (
-            <TableRow
-              key={position.id}
-              onClick={() => onSelect(position.id)}
-              className={cn(
-                "cursor-pointer border-border-muted/40 hover:bg-bg-secondary/60",
-                selectedId === position.id && "bg-accent-cyan/10",
-              )}
-            >
-              <TableCell>
-                <div className="flex items-center gap-2 text-[12px] tracking-[0.6px]">
-                  <span
-                    className="size-2 rounded-full"
-                    style={{ backgroundColor: position.protocolColor }}
-                  />
-                  {position.protocol}
-                </div>
-              </TableCell>
-              <TableCell className="text-[12px]">
-                <div className="flex items-center gap-2">
-                  <AssetIcon asset={position.asset} size="sm" />
-                  <span>{position.asset}</span>
-                </div>
-              </TableCell>
-              <TableCell className="text-[12px] text-text-muted">
-                {position.totalSupply}
-              </TableCell>
-              <TableCell className="text-[12px] text-accent-green">
-                {position.apr}
-              </TableCell>
-              <TableCell className="text-[12px] text-[#a5eeff]">
-                {position.suppliedBalanceDisplay}
-              </TableCell>
-            </TableRow>
-          ))}
+          {positions.map((position) => {
+            const isSelected = selectedId === position.id;
+
+            return (
+              <TableRow
+                key={position.id}
+                onClick={() => onSelect(position.id)}
+                className={cn(
+                  "cursor-pointer border-border-muted/40 hover:bg-selection-highlight-hover!",
+                  isSelected && "bg-selection-highlight hover:bg-selection-highlight!",
+                )}
+              >
+                <TableCell className="p-4">
+                  <div
+                    className={cn(
+                      "flex items-center gap-2 text-[12px] tracking-[0.6px]",
+                      isSelected ? "text-black" : "text-text-primary",
+                    )}
+                  >
+                    <span
+                      className="size-2 rounded-full"
+                      style={{ backgroundColor: position.protocolColor }}
+                    />
+                    {position.protocol}
+                  </div>
+                </TableCell>
+                <TableCell className="p-4">
+                  <div
+                    className={cn(
+                      "flex items-center gap-2 text-[12px] tracking-[0.6px]",
+                      isSelected ? "text-black" : "text-text-primary",
+                    )}
+                  >
+                    <AssetIcon asset={position.asset} size="sm" />
+                    {position.asset}
+                  </div>
+                </TableCell>
+                <TableCell
+                  className={cn(
+                    "p-4 text-[12px] tracking-[0.6px]",
+                    isSelected ? "text-black/70" : "text-text-muted",
+                  )}
+                >
+                  {position.totalSupply}
+                </TableCell>
+                <TableCell
+                  className={cn(
+                    "p-4 text-[12px] tracking-[0.6px]",
+                    isSelected ? "text-black/80" : "text-accent-green",
+                  )}
+                >
+                  {position.apr}
+                </TableCell>
+                <TableCell
+                  className={cn(
+                    "p-4 text-[12px] tracking-[0.6px]",
+                    isSelected ? "text-black/80" : "text-[#a5eeff]",
+                  )}
+                >
+                  {position.suppliedBalanceDisplay}
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
-    </TerminalPanel>
+    </DashboardPanel>
   );
 }
