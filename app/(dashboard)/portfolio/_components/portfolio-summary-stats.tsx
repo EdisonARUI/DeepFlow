@@ -1,4 +1,3 @@
-import { Landmark } from "lucide-react";
 import type { PortfolioSummaryView } from "@/lib/data/portfolio/types";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
@@ -15,17 +14,6 @@ type PortfolioSummaryStatsProps = {
 export function PortfolioSummaryStats({ summary }: PortfolioSummaryStatsProps) {
   const stats = [
     {
-      label: "TOTAL_ASSETS",
-      value: currencyFormatter.format(summary.totalAssets),
-      valueClassName: "text-accent-green",
-      icon: Landmark,
-    },
-    {
-      label: "WORKING_CAPITAL",
-      value: currencyFormatter.format(summary.workingCapital),
-      valueClassName: "text-accent-cyan",
-    },
-    {
       label: "IDLE_CAPITAL",
       value: currencyFormatter.format(summary.idleCapital),
       valueClassName: "text-text-primary",
@@ -33,24 +21,29 @@ export function PortfolioSummaryStats({ summary }: PortfolioSummaryStatsProps) {
     {
       label: "UTILIZATION_RATE",
       value: `${summary.utilizationRate.toFixed(2)}%`,
-      valueClassName: "text-accent-orange",
+      valueClassName: "text-accent-rate",
+    },
+    {
+      label: "TOTAL_ASSETS",
+      value: currencyFormatter.format(summary.totalAssets),
+      valueClassName: "text-accent-green",
+    },
+    {
+      label: "WORKING_CAPITAL",
+      value: currencyFormatter.format(summary.workingCapital),
+      valueClassName: "text-accent-cyan",
     },
   ] as const;
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
       {stats.map((stat) => (
         <div
           key={stat.label}
-          className="relative overflow-hidden border border-border-default bg-bg-panel px-5 py-5"
+          className="flex h-[100px] flex-col justify-center gap-2 overflow-hidden rounded-[20px] bg-bg-dashboard-card p-5"
         >
-          {"icon" in stat && stat.icon ? (
-            <stat.icon className="absolute top-0 right-0 size-9 text-accent-cyan/20" />
-          ) : null}
-          <p className="text-[11px] font-bold tracking-[1.1px] text-text-muted uppercase">
-            {stat.label}
-          </p>
-          <p className={`mt-2 text-[32px] leading-none font-bold ${stat.valueClassName}`}>
+          <p className="text-base font-bold text-text-muted uppercase">{stat.label}</p>
+          <p className={`text-[32px] leading-none font-bold ${stat.valueClassName}`}>
             {stat.value}
           </p>
         </div>

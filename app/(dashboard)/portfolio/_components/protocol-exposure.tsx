@@ -1,11 +1,9 @@
 "use client";
 
-import { LayoutGrid } from "lucide-react";
 import { ResponsiveContainer, Treemap } from "recharts";
 import type { TreemapNode } from "recharts/types/chart/Treemap";
-import { TerminalLabel } from "@/components/terminal-label";
-import { TerminalPanel } from "@/components/terminal-panel";
 import type { ProtocolExposureItem } from "@/lib/data/portfolio/types";
+import { DashboardPanel } from "@/components/dashboard-panel";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -14,9 +12,18 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
+const CELL_GAP = 4;
+
 type ProtocolExposureProps = {
   exposure: ProtocolExposureItem[];
 };
+
+function formatProtocolLabel(name: string): string {
+  if (name === "DEEPBOOK") return "DeepBook";
+  if (name === "SUILEND") return "Suilend";
+  if (name === "WALLET") return "Wallet";
+  return name.charAt(0) + name.slice(1).toLowerCase();
+}
 
 function createExposureCell(exposure: ProtocolExposureItem[]) {
   return function ExposureCell(props: TreemapNode) {
@@ -27,24 +34,28 @@ function createExposureCell(exposure: ProtocolExposureItem[]) {
       return <g />;
     }
 
-    const compact = width < 80 || height < 60;
+    const inset = CELL_GAP / 2;
+    const cellX = x + inset;
+    const cellY = y + inset;
+    const cellWidth = Math.max(0, width - CELL_GAP);
+    const cellHeight = Math.max(0, height - CELL_GAP);
+    const compact = cellWidth < 80 || cellHeight < 60;
 
     return (
       <g>
         <rect
-          x={x}
-          y={y}
-          width={width}
-          height={height}
+          x={cellX}
+          y={cellY}
+          width={cellWidth}
+          height={cellHeight}
+          rx={5}
+          ry={5}
           fill={item.color}
           stroke="rgba(0, 218, 248, 0.2)"
           strokeWidth={1}
         />
-        <foreignObject x={x} y={y} width={width} height={height}>
-          <div
-            className="flex h-full flex-col justify-between p-3"
-            style={{ color: "#000000" }}
-          >
+        <foreignObject x={cellX} y={cellY} width={cellWidth} height={cellHeight}>
+          <div className="flex h-full flex-col justify-between rounded-[5px] p-3 text-black">
             <div className="flex items-start justify-between gap-2 text-[10px] uppercase">
               <span className={compact ? "truncate opacity-80" : "opacity-80"}>{item.name}</span>
               {!compact ? <span className="tracking-[0.6px]">{item.percent}%</span> : null}
@@ -65,22 +76,17 @@ export function ProtocolExposure({ exposure }: ProtocolExposureProps) {
   const ExposureCell = createExposureCell(exposure);
 
   return (
-    <TerminalPanel
-      className="flex h-full min-h-0 flex-col"
-      contentClassName="flex min-h-0 flex-1 flex-col p-0"
-      title={
-        <TerminalLabel className="text-accent-cyan">PROTOCOL_EXPOSURE</TerminalLabel>
-      }
-      actions={
-        <LayoutGrid className="size-5 text-accent-cyan" aria-hidden="true" />
-      }
+    <DashboardPanel
+      className="h-[525px] justify-between gap-5"
+      contentClassName="flex flex-col justify-between gap-8"
+      title="PROTOCOL_EXPOSURE"
     >
-      <div className="flex flex-1 flex-col items-center p-8">
+      <div className="flex flex-1 flex-col items-center justify-center">
         {exposure.length === 0 ? (
           <p className="text-sm text-text-muted">No protocol exposure data.</p>
         ) : (
           <>
-            <div className="h-64 w-full">
+            <div className="mx-auto h-[285px] w-full max-w-[420px]">
               <ResponsiveContainer width="100%" height="100%">
                 <Treemap
                   data={exposure}
@@ -97,7 +103,7 @@ export function ProtocolExposure({ exposure }: ProtocolExposureProps) {
                   <span className="size-2 shrink-0" style={{ backgroundColor: item.color }} />
                   <div>
                     <p className="text-[10px] text-text-muted">
-                      {item.name.charAt(0) + item.name.slice(1).toLowerCase()} ({item.percent}%)
+                      {formatProtocolLabel(item.name)} ({item.percent}%)
                     </p>
                     <p className="text-[12px] tracking-[0.6px] text-text-primary">
                       {currencyFormatter.format(item.value)}
@@ -109,6 +115,6 @@ export function ProtocolExposure({ exposure }: ProtocolExposureProps) {
           </>
         )}
       </div>
-    </TerminalPanel>
+    </DashboardPanel>
   );
 }

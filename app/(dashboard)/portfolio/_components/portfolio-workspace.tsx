@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
 import { usePortfolio } from "@/lib/data/portfolio/use-portfolio";
-import { AssetComposition } from "./asset-composition";
 import { PortfolioSummaryStats } from "./portfolio-summary-stats";
-import { ProtocolExposure } from "./protocol-exposure";
 import { TransactionHistory } from "./transaction-history";
 
 const TIMEFRAMES = {
@@ -13,13 +12,66 @@ const TIMEFRAMES = {
   "30_DAYS": 30,
 } as const;
 
+const MAX_TRANSACTION_DAYS = 30;
+
 type TimeframeKey = keyof typeof TIMEFRAMES;
+
+function ChartSkeleton() {
+  return <div className="h-72 animate-pulse rounded-[28px] bg-white/5" aria-hidden />;
+}
+
+const AssetComposition = dynamic(
+  () => import("./asset-composition").then((module) => module.AssetComposition),
+  {
+    ssr: false,
+    loading: () => <ChartSkeleton />,
+  },
+);
+
+const ProtocolExposure = dynamic(
+  () => import("./protocol-exposure").then((module) => module.ProtocolExposure),
+  {
+    ssr: false,
+    loading: () => <ChartSkeleton />,
+  },
+);
+
+function SkeletonCard({ className }: { className?: string }) {
+  return (
+    <div className={`rounded-[28px] bg-white/5 ${className ?? ""}`.trim()} aria-hidden />
+  );
+}
+
+function PortfolioWorkspaceSkeleton() {
+  return (
+    <div className="flex animate-pulse flex-col gap-5 rounded-[45px] bg-bg-dashboard-shell p-5">
+      <SkeletonCard className="h-10 w-full" />
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-4">
+        <SkeletonCard className="h-28" />
+        <SkeletonCard className="h-28" />
+        <SkeletonCard className="h-28" />
+        <SkeletonCard className="h-28" />
+      </div>
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <SkeletonCard className="h-72" />
+        <SkeletonCard className="h-72" />
+      </div>
+      <SkeletonCard className="h-80" />
+    </div>
+  );
+}
+
+function PortfolioShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-5 rounded-[45px] bg-bg-dashboard-shell p-5">{children}</div>
+  );
+}
 
 export function PortfolioWorkspace() {
   const account = useCurrentAccount();
   const [timeframe, setTimeframe] = useState<TimeframeKey>("30_DAYS");
   const transactionDays = TIMEFRAMES[timeframe];
-  const { portfolio, isLoading, error, refetch } = usePortfolio(transactionDays);
+  const { portfolio, isLoading, error, refetch } = usePortfolio(MAX_TRANSACTION_DAYS);
 
   const filteredTransactions = useMemo(() => {
     const cutoffMs = Date.now() - transactionDays * 24 * 60 * 60 * 1000;
@@ -27,16 +79,12 @@ export function PortfolioWorkspace() {
   }, [portfolio.transactions, transactionDays]);
 
   if (isLoading) {
-    return (
-      <div className="mx-auto max-w-[1280px] space-y-6 p-6">
-        <p className="text-sm text-text-muted">Loading portfolio…</p>
-      </div>
-    );
+    return <PortfolioWorkspaceSkeleton />;
   }
 
   if (error) {
     return (
-      <div className="mx-auto max-w-[1280px] space-y-6 p-6">
+      <PortfolioShell>
         <p className="text-sm text-text-muted">Failed to load portfolio: {error.message}</p>
         <button
           type="button"
@@ -45,22 +93,17 @@ export function PortfolioWorkspace() {
         >
           Retry
         </button>
-      </div>
+      </PortfolioShell>
     );
   }
 
   return (
-    <div className="mx-auto max-w-[1280px] space-y-6 p-6">
-      {!account && (
-        <p className="text-sm text-text-muted">
-          连接钱包以查看个人持仓与链上交易；当前展示的是 mock / 市场演示数据。
-        </p>
-      )}
+    <PortfolioShell>
       {portfolio.transactionWarning && (
         <p className="text-sm text-text-muted">{portfolio.transactionWarning}</p>
       )}
       <PortfolioSummaryStats summary={portfolio.summary} />
-      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-2">
         <AssetComposition
           allocationByFilter={portfolio.allocationByFilter}
           onRefresh={() => void refetch()}
@@ -72,6 +115,6 @@ export function PortfolioWorkspace() {
         timeframe={timeframe}
         onTimeframeChange={setTimeframe}
       />
-    </div>
+    </PortfolioShell>
   );
 }

@@ -3,13 +3,11 @@
 import { useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { RotateCw } from "lucide-react";
-import { AssetIcon } from "@/components/asset-icon";
-import { TerminalLabel } from "@/components/terminal-label";
-import { TerminalPanel } from "@/components/terminal-panel";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AssetAllocationItem, ProtocolFilter } from "@/lib/data/portfolio/types";
 import { PROTOCOL_FILTERS } from "@/lib/data/portfolio/types";
+import { DashboardPanel } from "@/components/dashboard-panel";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -28,10 +26,10 @@ export function AssetComposition({ allocationByFilter, onRefresh }: AssetComposi
   const allocation = allocationByFilter[filter];
 
   return (
-    <TerminalPanel
-      className="flex h-full min-h-0 flex-col"
-      contentClassName="flex min-h-0 flex-1 flex-col p-0"
-      title={<TerminalLabel className="text-accent-green">ASSET_COMPOSITION</TerminalLabel>}
+    <DashboardPanel
+      className="h-[525px] justify-between gap-5"
+      contentClassName="flex flex-col justify-between gap-5"
+      title="ASSET_COMPOSITION"
       actions={
         <Button
           variant="ghost"
@@ -44,37 +42,37 @@ export function AssetComposition({ allocationByFilter, onRefresh }: AssetComposi
         </Button>
       }
     >
-      <div className="flex border-b border-border-muted">
+      <div className="flex flex-wrap gap-2.5">
         {PROTOCOL_FILTERS.map((item) => (
           <button
             key={item}
             type="button"
             onClick={() => setFilter(item)}
             className={cn(
-              "flex-1 border-r border-border-muted px-3 py-2 text-[10px] tracking-[0.6px] uppercase",
+              "flex h-6 min-w-10 items-center justify-center rounded-[20px] px-2 text-[10px] tracking-[0.6px] uppercase",
               filter === item
-                ? "bg-accent-cyan/10 text-accent-cyan"
-                : "text-text-muted hover:text-text-primary",
+                ? "bg-accent-cyan-pill text-black"
+                : "bg-bg-pill-inactive text-text-primary",
             )}
           >
             {item}
           </button>
         ))}
       </div>
-      <div className="flex flex-1 flex-col items-center gap-8 p-8">
+      <div className="flex flex-1 flex-col items-center justify-between gap-8">
         {allocation.length === 0 ? (
           <p className="text-sm text-text-muted">No assets for this filter.</p>
         ) : (
           <>
-            <div className="relative size-48">
+            <div className="relative size-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={allocation}
                     dataKey="percent"
                     nameKey="name"
-                    innerRadius={58}
-                    outerRadius={80}
+                    innerRadius={90}
+                    outerRadius={125}
                     stroke="none"
                   >
                     {allocation.map((entry) => (
@@ -92,7 +90,6 @@ export function AssetComposition({ allocationByFilter, onRefresh }: AssetComposi
               {allocation.map((item) => (
                 <div key={item.name} className="flex items-center gap-3">
                   <span className="size-2 shrink-0" style={{ backgroundColor: item.color }} />
-                  <AssetIcon asset={item.name} size="sm" />
                   <div>
                     <p className="text-[10px] text-text-muted">
                       {item.name} ({item.percent}%)
@@ -107,6 +104,6 @@ export function AssetComposition({ allocationByFilter, onRefresh }: AssetComposi
           </>
         )}
       </div>
-    </TerminalPanel>
+    </DashboardPanel>
   );
 }

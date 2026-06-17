@@ -1,9 +1,6 @@
 "use client";
 
-import { TerminalLabel } from "@/components/terminal-label";
-import { TerminalPanel } from "@/components/terminal-panel";
 import { StatusBadge } from "@/components/status-badge";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -14,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { PortfolioTransactionView } from "@/lib/data/portfolio/types";
+import { DashboardPanel } from "@/components/dashboard-panel";
 
 const TIMEFRAMES = ["7_DAYS", "30_DAYS"] as const;
 export type TransactionTimeframe = (typeof TIMEFRAMES)[number];
@@ -24,45 +22,56 @@ type TransactionHistoryProps = {
   onTimeframeChange: (timeframe: TransactionTimeframe) => void;
 };
 
+function TimeframeToggle({
+  timeframe,
+  onTimeframeChange,
+}: {
+  timeframe: TransactionTimeframe;
+  onTimeframeChange: (timeframe: TransactionTimeframe) => void;
+}) {
+  return (
+    <div className="flex h-8 items-center rounded-[20px] border border-accent-cyan-pill">
+      {TIMEFRAMES.map((tf) => (
+        <button
+          key={tf}
+          type="button"
+          onClick={() => onTimeframeChange(tf)}
+          className={cn(
+            "flex h-8 w-20 items-center justify-center rounded-[20px] text-[12px] tracking-[0.6px] uppercase",
+            timeframe === tf
+              ? "bg-accent-cyan-pill text-black"
+              : "text-text-primary",
+          )}
+        >
+          {tf}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function TransactionHistory({
   transactions,
   timeframe,
   onTimeframeChange,
 }: TransactionHistoryProps) {
   return (
-    <TerminalPanel
-      className="col-span-full"
-      contentClassName="p-0"
-      title={<TerminalLabel className="text-accent-green">TRANSACTION_HISTORY</TerminalLabel>}
+    <DashboardPanel
+      className="gap-2.5"
+      contentClassName="overflow-hidden"
+      title="TRANSACTION"
       actions={
-        <div className="flex gap-2">
-          {TIMEFRAMES.map((tf) => (
-            <Button
-              key={tf}
-              variant="outline"
-              size="sm"
-              onClick={() => onTimeframeChange(tf)}
-              className={cn(
-                "h-auto rounded-none border-border-default px-2.5 py-0.5 text-[12px] tracking-[0.6px] uppercase",
-                timeframe === tf
-                  ? "border-accent-green text-accent-green"
-                  : "bg-transparent text-text-muted",
-              )}
-            >
-              {tf}
-            </Button>
-          ))}
-        </div>
+        <TimeframeToggle timeframe={timeframe} onTimeframeChange={onTimeframeChange} />
       }
     >
       <Table>
         <TableHeader>
-          <TableRow className="border-border-default hover:bg-transparent">
+          <TableRow className="border-border-muted/30 hover:bg-transparent">
             {["DATE", "TYPE", "ASSET", "AMOUNT", "STATUS", "TX_HASH"].map((col) => (
               <TableHead
                 key={col}
                 className={cn(
-                  "text-[11px] font-bold tracking-[0.6px] text-text-muted uppercase",
+                  "p-4 text-[11px] font-bold tracking-[0.6px] text-text-muted uppercase",
                   col === "TX_HASH" && "text-right",
                 )}
               >
@@ -74,27 +83,30 @@ export function TransactionHistory({
         <TableBody>
           {transactions.length === 0 ? (
             <TableRow className="border-border-muted/40">
-              <TableCell colSpan={6} className="text-center text-sm text-text-muted">
+              <TableCell colSpan={6} className="p-4 text-center text-sm text-text-muted">
                 No transactions in this timeframe.
               </TableCell>
             </TableRow>
           ) : (
             transactions.map((row) => (
-              <TableRow key={`${row.txHash}-${row.date}`} className="border-border-muted/40">
-                <TableCell className="text-[12px] text-text-primary/70">{row.date}</TableCell>
-                <TableCell className="text-[12px] font-bold text-text-primary uppercase">
+              <TableRow
+                key={`${row.txHash}-${row.date}`}
+                className="border-border-muted/40 bg-[rgba(53,53,52,0.05)]"
+              >
+                <TableCell className="p-4 text-[12px] text-text-primary/70">{row.date}</TableCell>
+                <TableCell className="p-4 text-[12px] font-bold text-text-primary uppercase">
                   {row.type}
                 </TableCell>
-                <TableCell className="text-[12px]">{row.asset}</TableCell>
+                <TableCell className="p-4 text-[12px]">{row.asset}</TableCell>
                 <TableCell
                   className={cn(
-                    "text-[12px]",
+                    "p-4 text-[12px]",
                     row.amount.startsWith("+") ? "text-accent-cyan" : "text-accent-orange",
                   )}
                 >
                   {row.amount}
                 </TableCell>
-                <TableCell>
+                <TableCell className="p-4">
                   <StatusBadge
                     variant={
                       row.status === "COMPLETED"
@@ -104,11 +116,16 @@ export function TransactionHistory({
                           : "pending"
                     }
                     dot
+                    className={
+                      row.status === "COMPLETED"
+                        ? "border-accent-green/30 bg-accent-green/10 text-accent-green [&_span]:bg-accent-green"
+                        : undefined
+                    }
                   >
                     {row.status}
                   </StatusBadge>
                 </TableCell>
-                <TableCell className="text-right text-[12px] text-text-primary/50">
+                <TableCell className="p-4 text-right text-[12px] text-text-primary/50">
                   {row.txHash}
                 </TableCell>
               </TableRow>
@@ -116,6 +133,6 @@ export function TransactionHistory({
           )}
         </TableBody>
       </Table>
-    </TerminalPanel>
+    </DashboardPanel>
   );
 }
