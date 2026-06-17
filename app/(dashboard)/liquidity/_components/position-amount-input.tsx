@@ -28,14 +28,14 @@ export function PositionAmountInput({
   onAssetChange,
 }: PositionAmountInputProps) {
   return (
-    <div className="border border-border-default bg-bg-secondary p-4">
-      <div className="mb-2 flex justify-between text-[11px] text-text-muted uppercase">
-        <span>Input_amount</span>
-        <span>
+    <div className="flex flex-col justify-between gap-4 rounded-[20px] bg-bg-secondary p-4">
+      <div className="flex justify-between text-[11px] text-text-muted uppercase">
+        <span className="font-bold">Input_amount</span>
+        <span className="text-[12px] normal-case tracking-[0.6px]">
           {balanceLabel}: {balance}
         </span>
       </div>
-      <div className="flex items-center gap-4 border border-border-default p-4">
+      <div className="flex items-center gap-4 rounded-[20px] border border-border-default p-4">
         <Input
           value={amount}
           onChange={(e) => onAmountChange(e.target.value)}
@@ -48,7 +48,7 @@ export function PositionAmountInput({
             if (asset) onAssetChange(asset);
           }}
         >
-          <SelectTrigger className="w-32 rounded-none border-border-default bg-bg-panel">
+          <SelectTrigger className="w-32 rounded-[4px] border-border-default bg-bg-panel-header">
             <AssetIcon asset={selectedAsset} size="sm" />
             <SelectValue placeholder={selectedAsset} />
           </SelectTrigger>

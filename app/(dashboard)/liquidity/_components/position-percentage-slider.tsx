@@ -15,7 +15,7 @@ export function PositionPercentageSlider({
   accentClassName = "[&_[data-slot=slider-range]]:bg-accent-cyan [&_[data-slot=slider-thumb]]:border-accent-cyan",
 }: PositionPercentageSliderProps) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-2 pt-4">
       <Slider
         value={value}
         onValueChange={(next) => onValueChange(Array.isArray(next) ? [...next] : [next])}
@@ -23,7 +23,7 @@ export function PositionPercentageSlider({
         step={25}
         className={cn(accentClassName)}
       />
-      <div className="flex justify-between text-[10px] text-text-muted uppercase">
+      <div className="flex justify-between text-[11px] font-bold text-text-muted uppercase">
         {PERCENTAGE_MARKS.map((mark) => (
           <span key={mark}>{mark}</span>
         ))}

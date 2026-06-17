@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Box } from "lucide-react";
-import { TerminalLabel } from "@/components/terminal-label";
-import { TerminalPanel } from "@/components/terminal-panel";
+import { DashboardPanel } from "@/components/dashboard-panel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { LiquidityPositionDisplay } from "@/lib/data/liquidity/liquidity-formatters";
 import { useSupplyWithdrawSimulation } from "@/lib/data/liquidity/use-supply-withdraw-simulation";
@@ -18,8 +16,8 @@ type PositionManagementProps = {
   onPositionsRefetch?: (options?: { bustCache?: boolean }) => void;
 };
 
-const tabTriggerClassName =
-  "rounded-none border border-border-default px-4 py-1 text-[11px] uppercase data-[state=active]:border-accent-cyan data-[state=active]:bg-accent-cyan data-[state=active]:text-[var(--text-on-accent)]";
+const TAB_TRIGGER_CLASS =
+  "flex h-8 w-20 items-center justify-center rounded-[20px] border-0 bg-transparent p-0 text-[12px] tracking-[0.6px] text-text-primary uppercase shadow-none data-active:!bg-accent-cyan-pill data-active:!text-black";
 
 function truncateDigest(digest: string): string {
   if (digest.length <= 12) return digest;
@@ -87,26 +85,21 @@ export function PositionManagement({
 
   return (
     <Tabs defaultValue="supply">
-      <TerminalPanel
-        contentClassName="p-0"
-        title={
-          <div className="flex items-center gap-2">
-            <Box className="size-3.5 text-text-primary" />
-            <TerminalLabel className="text-text-primary">POSITION_MANAGEMENT</TerminalLabel>
-          </div>
-        }
+      <DashboardPanel
+        title="POSITION_MANAGEMENT"
         actions={
-          <TabsList className="h-auto rounded-none bg-transparent p-0">
-            <TabsTrigger value="supply" className={tabTriggerClassName}>
+          <TabsList className="flex h-8 items-center rounded-[20px] border border-accent-cyan-pill bg-transparent p-0">
+            <TabsTrigger value="supply" className={TAB_TRIGGER_CLASS}>
               Supply
             </TabsTrigger>
-            <TabsTrigger value="withdraw" className={tabTriggerClassName}>
+            <TabsTrigger value="withdraw" className={TAB_TRIGGER_CLASS}>
               Withdraw
             </TabsTrigger>
           </TabsList>
         }
+        contentClassName="min-h-0"
       >
-        <TabsContent value="supply" className="mt-0 p-6">
+        <TabsContent value="supply" className="mt-0">
           <SupplyPositionForm
             positions={positions}
             selectedPosition={selectedPosition}
@@ -128,7 +121,7 @@ export function PositionManagement({
             statusMessage={supplyStatusMessage}
           />
         </TabsContent>
-        <TabsContent value="withdraw" className="mt-0 p-6">
+        <TabsContent value="withdraw" className="mt-0">
           <WithdrawPositionForm
             positions={positions}
             selectedPosition={selectedPosition}
@@ -149,7 +142,7 @@ export function PositionManagement({
             statusMessage={withdrawStatusMessage}
           />
         </TabsContent>
-      </TerminalPanel>
+      </DashboardPanel>
     </Tabs>
   );
 }
