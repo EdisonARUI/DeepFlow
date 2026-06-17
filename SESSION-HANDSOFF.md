@@ -2,9 +2,172 @@
 
 ## 当前任务
 
-修复 navi→suilend obligation 误报——已完成。
+Portfolio 未连接钱包交易历史提示文案移除——已完成。
 
 ## 已完成
+
+- [x] **Landing 首次跳转 dev 预编译预热修正（Portfolio/Liquidity/Trading）**：
+  - 依据用户实测日志 `Compiling /portfolio ... 7.7s` 确认瓶颈为 Next dev on-demand compile（非 Portfolio 页面内数据加载）。
+  - `app/_components/landing-portfolio-prefetch.tsx`：
+    - 预热范围从单路由扩展为 `["/portfolio","/liquidity","/trading"]`。
+    - session 去重 key 升级为 `__deepflow_prefetched_dashboard_routes__`，避免多入口重复触发。
+    - 开发环境新增 dev-only 轻量 `fetch(route, { cache: "no-store" })` 预热请求，提前触发 route compile；生产环境保持 `router.prefetch` 轻量路径。
+  - 自动化浏览器验证：landing 停留后点击 Portfolio 可直接离开 landing；终端复核未再出现新的 `/portfolio` 首次编译阻塞日志，后续访问为已预热快速响应（如 `GET /portfolio ... 264ms`）。
+  - `ReadLints`：改动文件无新增 lint 问题。
+
+- [x] **Landing → Portfolio 点击即时跳转优化**：
+  - 新增 `app/(dashboard)/loading.tsx`：提供 route-group 级骨架，确保从 landing 跨段进入 dashboard 时优先显示目标路由加载壳，不再停留 landing 画面。
+  - `app/_components/launch-app-link.tsx`：升级为 client 组件；对内部路由增加 `prefetch` + `onMouseEnter` / `onTouchStart` 主动预取，降低首击冷启动等待。
+  - `app/_components/landing-portfolio-prefetch.tsx`：预取时机从“纯 idle”改为“首帧后短延时优先 + 可见性兜底（500ms）”，保留会话内去重。
+  - 结果：点击 landing 的 Portfolio 入口会更快离开 landing，慢加载阶段以 dashboard/portfolio skeleton 承接。
+  - 已对相关文件执行 `ReadLints`，无新增问题。
+
+- [x] **移除 Portfolio 未连接钱包交易历史提示文案**：
+  - `lib/data/portfolio/sui-transaction-adapter.ts`：`owner` 缺失时仅返回空 `transactions`，不再返回 `warning: "Connect wallet to view on-chain transaction history."`。
+  - 结果：未连接钱包进入 Portfolio 时，不再显示该提示字样；其他错误 warning 保持不变。
+
+- [x] **Dashboard 提示文案英文统一**：
+  - 按用户确认范围（仅 Dashboard 用户可见文案）完成英文化，不改文档与纯开发注释。
+  - 移除 Trading execute 模式提示文案：`Execute 将签名上链（消耗真实资产与 gas）`（`swap-widget.tsx`）。
+  - Portfolio 未连接钱包提示改英文：`Connect wallet to view on-chain transaction history.`（`sui-transaction-adapter.ts`）。
+  - Trading/Portfolio/Liquidity 可见错误与空状态文案统一改英文（含 `use-trade-simulation.ts`、`deepbook-trading-adapter.ts`、`resolve-trade-execution.ts`、`map-to-portfolio-view.ts`、`deepbook-usd-price-oracle.ts`、`use-supply-withdraw-simulation.ts`、NAVI/Suilend adapter warnings）。
+  - 自检：`app/` 下无中文可见提示残留；`lib/data/` 下仅剩中文注释（非用户可见）。`ReadLints` 无新增错误（仅存在既有 Tailwind class 写法 warning）。
+
+- [x] **修复 TopBar Connect 按钮对齐与 dApp Kit 弹窗异常圆角**：
+  - 根因1（对齐）：`mysten-dapp-kit-connect-button` 实际可样式化 part 为 `trigger`，旧样式写成 `::part(button)` 未生效，内部按钮保持默认 `40px` 高度，导致与导航 `h-8` 视觉不齐。
+  - 根因2（圆角）：`globals.css` 给 dashboard Connect host 设置了 `--radius: 9999px`，该变量被 dApp Kit modal 继承，导致连接/账户弹窗圆角异常。
+  - 修复：
+    - `app/globals.css`：将 `::part(button)` 改为 `::part(trigger)`，并统一 `height: 32px`、`padding: 0 32px`、`border-radius: 50px`、`line-height: 1`。
+    - `app/globals.css`：`--radius` 从 `9999px` 调整为 `12px`，恢复 dApp Kit 弹窗合理圆角；保留按钮胶囊样式由 `::part(trigger)` 控制。
+    - `components/connect-button.tsx`：dashboard 包裹层补充 `inline-flex h-8 items-center`，与顶栏导航同基线对齐。
+  - 浏览器验证（localhost）：
+    - 未连接状态：`PORTFOLIO` 导航、Connect host、内部 button 三者 `top/bottom/height` 一致（54/86/32）。
+    - Connect 弹窗：`dialog border-radius` 恢复为 `12px`（修复前为异常继承值）。
+    - 已连接账户弹窗需本地钱包连接后手动点检，但同一 host 变量链路已修复。
+
+- [x] **移除 Portfolio / Liquidity / Trading 加载文案闪烁**：
+  - 根因：三页 workspace 的 `isLoading` 分支渲染了 `Loading ...` 文案；路由级 `loading.tsx` 骨架后会短暂切换到文案态，造成“闪一下”。
+  - 修复：将 `portfolio-workspace.tsx` / `liquidity-workspace.tsx` / `trading-workspace.tsx` 的加载分支统一替换为与各自路由 `loading.tsx` 结构一致的骨架组件，不再渲染 `Loading ...`。
+  - 自检：在 `app/(dashboard)` 下检索已无 `Loading portfolio/liquidity/trading` 字样；对改动文件执行 lint 无新增问题。
+
+- [x] **Landing → Portfolio 首访性能优化（生产路径）**：
+  - landing 预热：新增 `app/_components/landing-portfolio-prefetch.tsx`，通过 `router.prefetch("/portfolio")` 在 idle 时机预拉取；并使用模块级标记 + `sessionStorage` 保证同会话仅触发一次。
+  - 预热接线：`landing-hero.tsx`、`landing-products.tsx` 注入 `LandingPortfolioPrefetch`，覆盖用户首屏与产品区浏览路径。
+  - Portfolio 首屏拆分：`portfolio-workspace.tsx` 将 `AssetComposition`、`ProtocolExposure` 改为 `next/dynamic` 按需加载（`ssr: false` + skeleton fallback），优先展示 summary 与页面框架。
+  - 数据分阶段：`portfolio-repository.ts` 新增 `includeTransactions` 参数；`use-portfolio.ts` 先请求关键数据（不含 transactions）并立即结束首屏 loading，再后台补齐完整数据；`live/mock` repository 均支持该参数。
+  - 生产验证：`npm run build` 通过；`npm run start -p 3001` 后实测 `landing: 0.033s`、`portfolio_first: 0.010s`、`portfolio_second: 0.002s`（本地环境）。首屏体感目标达成，图表与交易明细渐进补齐。
+
+- [x] **开发态切页加载优化（最小改动）**：
+  - `next.config.ts`：新增 `onDemandEntries`（`maxInactiveAge: 10min`、`pagesBufferLength: 10`），降低 dashboard 三页在开发环境来回切换时的重复编译概率。
+  - 新增路由级加载骨架：`app/(dashboard)/portfolio/loading.tsx`、`app/(dashboard)/liquidity/loading.tsx`、`app/(dashboard)/trading/loading.tsx`，减少编译/加载期间空白等待体感。
+  - 本地验证：`npm run dev` 后依次请求 `/portfolio -> /liquidity -> /trading -> /portfolio -> /liquidity -> /trading`；首轮分别触发编译（约 8.9s / 3.8s / 4.0s），二轮复访降至约 0.47s / 0.63s / 0.48s，确认复用已编译产物且切回明显更快。
+
+- [x] **Portfolio Treemap 缺失 Suilend 资产**：
+  - 根因：`EXPOSURE_PROTOCOLS` 白名单未含 `SUILEND`，`buildExposure` 静默跳过 Suilend 持仓；Asset Composition 的 `PROTOCOL_FILTERS` 已含 SUILEND，两模块配置不一致。
+  - 修复：`types.ts` 新增 `SUILEND` 至 `EXPOSURE_PROTOCOLS`；`token-colors.ts` 补充 `#e5b842` 配色；`protocol-exposure.tsx` 图例标签 `Suilend`。
+  - 测试：`deepbook-usd-price-oracle.test.ts` 增加 SUILEND exposure 分桶用例。
+  - `PRODUCT.md` Treemap 协议桶描述同步更新。
+
+- [x] **DeFi Connectivity 表格左对齐与资产图标**：
+  - `defi-connectivity.tsx`：移除表头/表体 `text-right`，PROTOCOL / ASSET / TVL / APY / BALANCE 五列统一左对齐。
+  - ASSET 列复用 `AssetIcon`（`size="sm"`），与 `position-amount-input` 下拉选项一致。
+
+- [x] **Landing Product 字体排版与布局修复**（Figma `156:785` / `156:801` / `156:817`）：
+  - 根因：`landing-product-section.tsx` 标题 `text-[80px]` 配 `leading-[32px]`，行高小于字号导致两行标题重叠。
+  - 修复：标题改为 `leading-none` + 固定 `min-h` 容器（行1 `80px` / 行2 `90px`）；文案列 `gap-10`、`max-w-[515px]`；描述 `text-[10px]`；配图 `max-w-[500px]`；卡片 `max-w-[1240px]`、`lg:gap-[65px]`。
+  - 配图切换：`portfolio.png` / `liquidity.png` / `trading.png` 替换原 `*-dashboard.png`。
+  - 已验证 `npm run build`。
+
+- [x] **修复 Trading 页面 Orders 右侧留白（比例网格）**：
+  - 根因：`trading-workspace.tsx` 使用固定像素三列 `350 / 420 / 350`，在大屏容器内产生剩余宽度并集中到右侧，表现为 ORDERS 右侧留白过大。
+  - 修复：`xl:grid-cols` 改为比例列 `5fr / 6fr / 5fr`，总宽度随容器自适应，三列按固定比例伸缩；保留 `gap-5` 与现有面板结构不变。
+  - 已验证：通过代码检查确认布局逻辑生效；已执行 `ReadLints` 检查改动文件无新增错误。
+
+- [x] **Trading 页面 Figma 新设计落地**（Figma `169:3541`）：
+  - `trading-workspace.tsx`：新增 `TradingShell`（蓝色圆角外壳）；三栏 grid 调整为 `350 / 420 / 350`。
+  - `market-pairs.tsx`：换用共享 `DashboardPanel`；单 `AssetIcon`、选中左 cyan 边 + 浅青底。
+  - `swap-widget.tsx` / `swap-segmented-control.tsx` / `swap-amount-block.tsx` / `swap-execution-info.tsx`：DEEPBOOK 面板、SOURCE/DESTINATION 同行 pill、圆角金额块、装饰性 chevron、紧凑 Execute 按钮；功能逻辑不变。
+  - `deepbook-orders.tsx`：标题 **ORDERS**；BUY/SELL 左色条行样式；保留 status 弱化展示。
+  - 已验证 `npm run build`。
+
+- [x] **Liquidity 页面 Figma 新设计落地**（Figma `169:1943`）：
+  - 抽取共享 `components/dashboard-panel.tsx`；Portfolio 三处子组件改引用并删除 `portfolio-panel.tsx`。
+  - `liquidity/page.tsx` 简化为薄编排；`liquidity-workspace.tsx` 新增 `LiquidityShell`（蓝色圆角外壳）。
+  - `defi-connectivity.tsx`：`DEFI` 面板 + TVL/APY 表头、右对齐行、选中高亮 `accent-cyan-muted`。
+  - `position-management.tsx`：胶囊 Supply/Withdraw Tab + `DashboardPanel`。
+  - 表单子组件圆角化（`position-protocol-banner`、`position-amount-input`、`position-percentage-slider`、`transaction-overview-panel`）；Supply/Withdraw 双列 1:1 布局。
+  - `suilend-liquidity-adapter.ts`：协议色对齐设计稿 `#e5b842`。
+  - 已验证 `npm run build`。
+
+- [x] **Portfolio 四项修复**：
+  - `connect-button.tsx` + `globals.css`：dashboard variant 通过 `mysten-dapp-kit-connect-button` CSS 变量与 slot 对齐 Figma 胶囊样式。
+  - `protocol-exposure.tsx`：Treemap 块间距 4px、块内文字固定黑色。
+  - `portfolio-workspace.tsx`：`usePortfolio` 固定拉取 30 天，时间切换仅客户端过滤交易表，避免整页 loading。
+  - 已验证 `npm run build`。
+
+- [x] **Portfolio 页面 Figma 新设计落地**（Figma `164:1942`）：
+  - `globals.css`：新增 dashboard/portfolio 设计 token（`bg-dashboard-shell`、`bg-dashboard-card`、`accent-cyan-pill` 等）。
+  - `app-shell.tsx` / `top-bar.tsx`：移除 Sidebar 偏移，改为黑色背景 + 蓝色胶囊顶栏（品牌徽章 + 3 导航 pill + Connect Wallet）。
+  - `connect-button.tsx`：新增 `variant="dashboard"` 胶囊样式。
+  - 新增 `components/dashboard-panel.tsx`（原 `portfolio-panel.tsx`）；Portfolio 四块子组件换用新面板样式。
+  - `portfolio-workspace.tsx`：蓝色圆角内容外壳；统计卡重排顺序与圆角样式。
+  - `asset-composition.tsx`：pill 筛选、300px 饼图；`protocol-exposure.tsx`：Treemap 圆角与图例；`transaction-history.tsx`：胶囊时间切换。
+  - `token-colors.ts`：WAL 色值对齐设计稿。
+  - 已验证 `npm run build`。
+
+- [x] **Footer Banner Logo 循环顺序修复**：
+  - `landing-footer-banner.tsx`：`BANNER_SEQUENCE` 末项由 `deepflow` 改为 `brand`，循环单元对齐 `deepflow → logo → deepbook → logo`。
+  - 已验证 `npm run build`。
+
+- [x] **Landing 页面五项修复**：
+  - `landing-footer-banner.tsx`：`BANNER_SEQUENCE` 改为 4 元组 `deepflow → logo → deepbook → deepflow`；品牌 icon 对齐 header 比例（`width={40} height={28}` + `object-contain`）。
+  - `landing-partners.tsx`：按视口宽度动态计算 partner 重复次数，首屏两行铺满；外边距改为 `px-5 pt-5 pb-[10px]`。
+  - `landing-product-section.tsx` / `landing-products.tsx`：外边距对齐 Hero（`px-5 pt-5 pb-[10px]`）；移除 products 容器多余 `py`。
+  - `landing-product-portfolio.tsx` / `liquidity` / `trading`：添加 `id="landing-*"` section 锚点。
+  - `landing-footer.tsx`：`NAV_LINKS` 改为页内锚点（`#landing-hero` / portfolio / liquidity / trading / partners）；`LaunchAppLink` CTA 仍跳转 Dashboard。
+  - 已验证 `npm run build`。
+
+- [x] **Landing 页面六项修复**（Figma `156:173` 等）：
+  - `landing-header.tsx`：从页面级移入 Hero 内部；`sticky` + `IntersectionObserver` 改为 `absolute top-0 left-1/2 -translate-x-1/2` overlay；移除滚出 Hero 背景切换。
+  - `landing-hero.tsx`：内嵌 `<LandingHeader />`；移除 `-mt-[100px]` hack。
+  - `page.tsx`：移除顶层 Header 与 Roadmap 区块；删除 `landing-roadmap.tsx`。
+  - `landing-social-links.tsx`：Discord/Telegram 图标改黑色；footer 四个社交格统一 `rounded-[45px]` 白底容器；Mail 使用 `social-mail-icon.svg`（header 仍用圆形 `social-mail.svg`）。
+  - 新增 `social-mail-icon.svg`；更新 `social-discord.svg`、`social-telegram.svg` fill 为 `#000000`。
+  - `globals.css`：footer banner marquee `40s` → `20s`；partners marquee `30s` → `15s`。
+  - 已验证 `npm run build`。
+
+- [x] **Landing Footer 改版**（Figma `156:853`）：
+  - 新增 `landing-footer-banner.tsx`：DEEPFLOW / 品牌 / DEEPBOOK 三块瓷砖横向无限循环滚动。
+  - `landing-footer.tsx`：左 2×2 社交网格 + 右信息面板（导航、法律链接、版权、渐变 watermark）。
+  - `landing-social-links.tsx` 新增 `variant="footer"`（173px 白色圆角方块）。
+  - `landing-partners.tsx` 添加 `id="landing-partners"` 供 PARTNER 锚点跳转。
+  - `globals.css` 新增 `landing-footer-banner-marquee` 动画；新增 `footer-brand-icon.svg`。
+  - 已验证 `npm run build`。
+
+- [x] **Landing Partners 双行反向滚动改版**（Figma `156:415`）：
+  - `landing-partners.tsx`：黑色背景、标题 `Our Partner`（64px）、120×120 白色圆角图标卡片。
+  - 双行 `PartnerMarqueeRow` 横向无限滚动，上行向左、下行向右（`animate-landing-partners-marquee-reverse`）。
+  - `globals.css` 新增反向 marquee keyframes；`prefers-reduced-motion` 时降级为 `overflow-x-auto`。
+  - 新增圆形 logo 资源：`partner-navi-circle.png`、`partner-deepbook-circle.png`、`partner-sui-circle.png`、`partner-suilend-circle.png`。
+  - 已验证 `npm run build`。
+
+- [x] **Landing Products 三页重构**（Figma `156:785` / `156:801` / `156:817`）：
+  - 移除 Tab 切换，改为纵向展示 Portfolio / Liquidity / Trading 三个独立区块。
+  - 新增 `landing-product-section.tsx` 共享布局（`#003d7a` 圆角卡片、Anton 双行标题、预览框、START NOW）。
+  - 新增 `landing-product-portfolio.tsx`、`landing-product-liquidity.tsx`、`landing-product-trading.tsx`。
+  - `landing-products.tsx` 改为 Server Component 薄编排。
+  - `launch-app-link.tsx` 新增 `start-now` 变体与 `href` prop，分别跳转 `/portfolio`、`/liquidity`、`/trading`。
+  - 新增资源：`liquidity-dashboard.png`、`trading-dashboard.png`、`arrow-up-right.svg`；更新 `portfolio-dashboard.png`。
+  - Liquidity 区块文左图右（`reversed`）；移动端 Liquidity 文案在上。
+  - 已验证 `npm run build`。
+
+- [x] **Landing Hero + Header 新设计落地**（Figma `156:173`）：
+  - `landing-hero.tsx`：圆角渐变卡片（`rounded-[45px]`）、Anton 主标题 `DEEPFLOW`、副标题 `Unify Liquidity on DeepBook`（Liquidity `#baf2ff`）、胶囊 CTA；保留 `LandingHeroWaves` 背景；`-mt-[100px]` 与 Header 重叠。
+  - `landing-header.tsx`：`h-[100px]`、紫色圆形品牌徽章、Hero 上 `backdrop-blur` + cyan 阴影、滚出后 `bg-[#101415]/95`；`rootMargin -100px`。
+  - `landing-social-links.tsx`：新增 `variant`（`header` / `default`）；Header 白色圆形社交按钮 + Email；Footer 保持原样式。
+  - `launch-app-link.tsx`：导出 `LANDING_LAUNCH_PILL_CLASS` 供 Hero/Header 复用。
+  - 新增资源：`public/figma/landing/brand-icon.svg`、`social-mail.svg`（Figma MCP 下载）。
+  - 已验证 `npm run build`。
 
 - [x] **修复 navi→suilend 误报「请先在 Suilend 存入资产」**：
   - 根因：`build-navi-swap-then-supply-suilend-tx` 的 `appendSuilendDeposit` 使用 `allowCreateObligation: false`，无 Suilend obligation 时在 PTB 构建前即失败；`wallet_suilend` 为 `true` 故可通过。
@@ -268,19 +431,30 @@
   - `use-trade-simulation`：DeepBook 报价用 `baseUnits` 对齐 human amount、`minUsdcOut` 预检、wallet 源 0.5 SUI gas 预留、1502/minUsdcOut 友好错误。
   - 测试：`build-wallet-swap-then-supply-usdc-tx.unit.test.ts`；集成 `trade-wallet-navi.integration.test.ts` 新增 wallet→NAVI case。
   - 已验证 `npm test`（52 passed, 21 skipped）。
+- [x] **Trading Execute 实际上链（`signAndExecuteTransaction`）**：
+  - 新增 `NEXT_PUBLIC_TRADING_WRITE_MODE`（默认 `simulate`；`execute` 时 dry-run 通过后 `dAppKit.signAndExecuteTransaction` 上链）。
+  - `resolve-trading-write-mode.ts`；`use-trade-simulation` 抽取 `finishSimulation`，9 条 SOURCE×DESTINATION 路由统一 dry-run → 可选上链；execute 模式要求 `NEXT_PUBLIC_DATA_SOURCE=live`。
+  - `swap-widget`：executing / executed 状态、Suiscan 链接；`trading-workspace` 上链后 `refetchPositions`。
+  - 已更新 `PRODUCT.md`、`ARCHITECTURE.md`。
+
+- [x] **PPT 重构与风格/框架对齐**：
+  - 基于 `speech.md` 与 `prd v8.md` 重构 PPT 框架。
+  - PPT 整体大纲与结构严格按 `frame.md` 进行对齐（共 12 页，划分 Part 01 与 Part 02）。
+  - PPT 视觉风格完全参考 `style/` 截图，配置了混凝土背景色、黄色高亮块与黑色文字的卡片化设计。
+  - 已生成并输出最新的 slide 模块，对应生成的 PPTX 文件处于可编辑状态。
 
 ## 未完成 / 待处理
 
 - [ ] Security 页映射 `ExecutionPolicy` 字段到 `lib/data/*`。
 - [ ] Liquidity **Withdraw 写路径 execute**：Supply 已支持；Withdraw 与 bootstrap 仍仅 simulate。
-- [ ] Trading Execute 实际上链（`signAndExecuteTransaction`）。
 - [ ] 扩展 Liquidity 协议适配器：Scallop / Cetus 等（Suilend 已完成）。
 - [ ] 创建 Move 合约模块：`automation_vault`、`policy_guard`、`credit_router`。
 - [ ] 浏览器内手动验证：连接 mainnet 钱包后 Liquidity 页 Supply **execute 模式**小额上链（`.env.local` 设 `NEXT_PUBLIC_LIQUIDITY_WRITE_MODE=execute`）；simulate 模式验证 **Simulation passed**（无签名）。
+- [ ] 浏览器内手动验证：Trading 页 9 条 SOURCE×DESTINATION 路由 **execute 模式**小额上链（`.env.local` 设 `NEXT_PUBLIC_DATA_SOURCE=live` + `NEXT_PUBLIC_TRADING_WRITE_MODE=execute`）；simulate 模式验证「模拟通过」（无签名）。
 
 ## 下一步建议
 
-1. 浏览器内手动验证 Trading Swap：WALLET→WALLET / WALLET→NAVI / NAVI→NAVI / NAVI→WALLET dry-run；Suilend 选项应提示不支持。
+1. 浏览器内手动验证 Trading execute 模式：按 `wallet_wallet` → `wallet_navi` → … → `suilend_navi` 顺序小额验证 9 条路由。
 2. Security 页映射 `ExecutionPolicy` 字段。
 
 ## 注意事项
@@ -289,6 +463,7 @@
 - 切 mainnet 后 **`NEXT_PUBLIC_NAVI_ASSETS` 不得使用 `*_TEST` 后缀**（如 `USDC_TEST`）；应使用 `USDC,SUIUSDE,SUI,WAL,DEEP,XBTC` 或删除该变量使用默认白名单。代码会对遗留 `*_TEST` 配置自动映射并 `console.warn`。
 - Liquidity live 模式依赖 `@naviprotocol/lending` 与 `@suilend/sdk`；NAVI 构建时可能对 `getFullnodeUrl` 有 webpack 警告，运行时通过 `lib/shims/mysten-sui-client.ts` 兼容。Suilend 使用 gRPC client，无需 mysten v1 shim。
 - **`NEXT_PUBLIC_LIQUIDITY_WRITE_MODE`**：默认 `simulate`（仅 dry-run）；`execute` 时 **Supply** dry-run 通过后签名上链。Withdraw / bootstrap 始终 simulate。修改后需重启 `npm run dev`。
+- **`NEXT_PUBLIC_TRADING_WRITE_MODE`**：默认 `simulate`（仅 dry-run）；`execute` 时 dry-run 通过后签名上链，需同时设 `NEXT_PUBLIC_DATA_SOURCE=live`。修改后需重启 `npm run dev`。
 - **`NEXT_PUBLIC_SUILEND_ASSETS`** 默认与 NAVI 白名单相同；可选 **`NEXT_PUBLIC_SUILEND_USE_BETA_MARKET=true`** 切换 beta market（由 `@suilend/sdk` 读取）。
 - Suilend 首次 supply（无 obligation）须在 PTB 末尾 `sendObligationToUser`（`finalizeNewSuilendObligationCap`）；已有 obligation 则复用链上 cap id。
 - `next.config.ts` 中 `turbopack.resolveAlias` 必须使用项目相对路径；Webpack `resolve.alias` 用绝对路径。

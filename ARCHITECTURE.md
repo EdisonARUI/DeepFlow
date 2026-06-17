@@ -316,11 +316,11 @@ TradingWorkspace
 - **报价 vs NAVI 链上 preamble**：
   - **DeepBook SDK**（`getQuoteQuantityOutInputFee` / `getBaseQuantityOutInputFee`）→ 唯一 swap 报价源、`minOutput`（50bps 滑点）、`deepRequired`；Dashboard 用 `baseUnits` 换算 human amount 再报价；输出精度由 `resolveOutputDecimals` 从 `mainnetCoins` 推导。
   - **NAVI oracle preamble**（`appendNaviOraclePreamble` → `updateOraclePriceBeforeUserOperationPTB`）→ 仅在 PTB 含 `depositCoinPTB`/`withdrawCoinPTB` 时于首笔 lending 操作前刷新**链上** oracle 状态（非报价）；`wallet_wallet` 无 NAVI 操作故跳过。
-- **MVP 限制**：Execute 仅 dry-run 模拟，不 `signAndExecuteTransaction`；支持 7 个精选 DeepBook 池的双向 swap（`FEATURED_POOL_KEYS`）。
+- **MVP 限制**：Execute 默认仅 dry-run；`NEXT_PUBLIC_TRADING_WRITE_MODE=execute` 时 dry-run 通过后 `signAndExecuteTransaction` 上链（需 `NEXT_PUBLIC_DATA_SOURCE=live`）；支持 7 个精选 DeepBook 池的双向 swap（`FEATURED_POOL_KEYS`）。
 
 DeepBook 客户端工厂：`lib/sui/deepbook-client.ts`（Dashboard 读路径）；SDK 集成测试用 `sdk/src/sui/deepbook-client.ts`（同源工厂）。
 
-#### Trading 写路径（SDK，mainnet dry-run）
+#### Trading 写路径（SDK，mainnet dry-run / 可选上链）
 
 ```text
 TradingWorkspace（Execute）
@@ -335,8 +335,12 @@ TradingWorkspace（Execute）
   -> suilend_suilend:  simulateTradeSuilendRoundTrip()
   -> suilend_wallet:   simulateTradeSuilendReturn()
   -> suilend_navi:     simulateTradeSuilendNavi()
-  -> dryRunTransaction
+  -> dryRunTransaction（预检，始终执行）
+  -> [NEXT_PUBLIC_TRADING_WRITE_MODE=execute 且 DATA_SOURCE=live]
+       dAppKit.signAndExecuteTransaction（钱包签名上链）
 ```
+
+- **写路径模式**：`NEXT_PUBLIC_TRADING_WRITE_MODE` 默认 `simulate`（仅 dry-run）；`execute` 时 dry-run 通过后调用 `useDAppKit().signAndExecuteTransaction` 实际上链。execute 模式要求 `NEXT_PUBLIC_DATA_SOURCE=live`（mock 报价与真实 PTB 不一致）。
 
 - **wallet 源预检**：`walletCoinBalance >= amount`；wallet 源另预留 **0.5 SUI** gas（`useGasCoin` merge）。
 - **NAVI / Suilend 源预检**：`suppliedBalance >= amount`（不自动 bootstrap）；Suilend 源另要求已有 obligation。
@@ -377,6 +381,7 @@ PositionManagement（Supply / Withdraw 按钮）
 | `NEXT_PUBLIC_SUILEND_ASSETS` | 见上白名单 | 可选，逗号分隔 Suilend reserve 标的覆盖 |
 | `NEXT_PUBLIC_SUILEND_USE_BETA_MARKET` | `false` | 可选，`true` 时使用 Suilend beta lending market（`@suilend/sdk` 内置常量） |
 | `NEXT_PUBLIC_LIQUIDITY_WRITE_MODE` | `simulate` | `simulate` 仅 dry-run；`execute` 时 Supply dry-run 通过后签名上链 |
+| `NEXT_PUBLIC_TRADING_WRITE_MODE` | `simulate` | `simulate` 仅 dry-run；`execute` 时 Trading dry-run 通过后签名上链（需 `DATA_SOURCE=live`） |
 | `RUN_MAINNET_INTEGRATION` | — | SDK 集成测试开关（仅 `sdk/tests`，非 Dashboard） |
 | `INTEGRATION_SENDER` | — | mainnet 测试地址（集成测试） |
 | `INTEGRATION_ASSET` / `INTEGRATION_AMOUNT` | `USDC` / `1000` | 可选，集成测试 supply 参数 |
