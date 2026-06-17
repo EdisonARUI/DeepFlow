@@ -15,8 +15,13 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Deepflow Terminal",
+  title: "DeepFlow",
+  applicationName: "DeepFlow",
   description: "Sui DeFi atomic execution dashboard",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({

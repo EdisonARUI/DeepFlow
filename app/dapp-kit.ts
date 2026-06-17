@@ -6,6 +6,9 @@ export const dAppKit = createDAppKit({
   networks: [SUI_NETWORK],
   createClient: (network) =>
     new SuiGrpcClient({ network, baseUrl: SUI_GRPC_URL }),
+  slushWalletConfig: {
+    appName: "DeepFlow",
+  },
 });
 
 declare module "@mysten/dapp-kit-react" {
