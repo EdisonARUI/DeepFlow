@@ -36,16 +36,25 @@ export function usePortfolio(transactionDays = 30) {
       setError(null);
 
       try {
-        const result = await repository.listPortfolio({
+        const criticalResult = await repository.listPortfolio({
           owner: account?.address,
           transactionDays,
           bustCache: options?.bustCache,
+          includeTransactions: false,
         });
-        setPortfolio(result);
+        setPortfolio(criticalResult);
+        setIsLoading(false);
+
+        const fullResult = await repository.listPortfolio({
+          owner: account?.address,
+          transactionDays,
+          bustCache: options?.bustCache,
+          includeTransactions: true,
+        });
+        setPortfolio(fullResult);
       } catch (err) {
         setError(err instanceof Error ? err : new Error("Failed to load portfolio"));
         setPortfolio(EMPTY_PORTFOLIO);
-      } finally {
         setIsLoading(false);
       }
     },

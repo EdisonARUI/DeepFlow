@@ -4,12 +4,13 @@ const TOKEN_CHART_COLORS: Record<string, string> = {
   DEEP: "#ffba20",
   suiUSDe: "#72ff70",
   SUIUSDE: "#72ff70",
-  WAL: "#ff9100",
+  WAL: "#e5e2e1",
   vSUI: "#e5e2e1",
 };
 
 const EXPOSURE_COLORS: Record<string, { color: string; textColor?: string }> = {
   NAVI: { color: "#00e0ff", textColor: "#001f25" },
+  SUILEND: { color: "#e5b842", textColor: "#001f25" },
   SCALLOP: { color: "#ffd792", textColor: "#00daf8" },
   CETUS: { color: "#72ff70", textColor: "#001f25" },
   DEEPBOOK: { color: "#00ff41", textColor: "#00daf8" },

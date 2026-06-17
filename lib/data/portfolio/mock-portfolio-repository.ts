@@ -9,12 +9,13 @@ import { mapToPortfolioView } from "./map-to-portfolio-view";
 import type { ListPortfolioParams, PortfolioRepository } from "./portfolio-repository";
 
 export class MockPortfolioRepository implements PortfolioRepository {
-  async listPortfolio(_params: ListPortfolioParams) {
+  async listPortfolio(params: ListPortfolioParams) {
     const positions = mapToLiquidityViews([...MOCK_LIQUIDITY_RAW, ...MOCK_DEEPBOOK_RAW]);
+    const includeTransactions = params.includeTransactions ?? true;
 
     return mapToPortfolioView({
       positions,
-      transactions: MOCK_PORTFOLIO_TRANSACTIONS,
+      transactions: includeTransactions ? MOCK_PORTFOLIO_TRANSACTIONS : [],
       usdPrices: MOCK_TOKEN_USD_PRICES,
     });
   }

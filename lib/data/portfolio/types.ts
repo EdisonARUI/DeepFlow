@@ -3,6 +3,7 @@ export type ProtocolFilter = (typeof PROTOCOL_FILTERS)[number];
 
 export const EXPOSURE_PROTOCOLS = [
   "NAVI",
+  "SUILEND",
   "SCALLOP",
   "CETUS",
   "DEEPBOOK",

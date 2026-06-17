@@ -163,7 +163,6 @@ export async function listRecentTransactions(
   if (!owner) {
     return {
       transactions: [],
-      warning: "连接钱包以查看链上交易记录。",
     };
   }
 
@@ -194,7 +193,7 @@ export async function listRecentTransactions(
     const message = err instanceof Error ? err.message : "Failed to load transactions";
     return {
       transactions: [],
-      warning: `链上交易查询失败：${message}`,
+      warning: `Failed to query on-chain transactions: ${message}`,
     };
   }
 }

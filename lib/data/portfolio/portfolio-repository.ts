@@ -4,6 +4,7 @@ export type ListPortfolioParams = {
   owner?: string;
   transactionDays?: number;
   bustCache?: boolean;
+  includeTransactions?: boolean;
 };
 
 export type ListPortfolioResult = PortfolioView;

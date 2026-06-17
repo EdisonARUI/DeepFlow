@@ -12,13 +12,19 @@ export class LivePortfolioRepository implements PortfolioRepository {
   async listPortfolio(params: ListPortfolioParams) {
     const liquidityRepository = createLiquidityRepository();
     const days = params.transactionDays ?? 30;
+    const includeTransactions = params.includeTransactions ?? true;
+
+    const liquidityPromise = liquidityRepository.listPositions({
+      owner: params.owner,
+      bustCache: params.bustCache,
+    });
+    const transactionPromise = includeTransactions
+      ? listRecentTransactions({ owner: params.owner, days })
+      : Promise.resolve({ transactions: [], warning: undefined });
 
     const [liquidityResult, transactionResult] = await Promise.all([
-      liquidityRepository.listPositions({
-        owner: params.owner,
-        bustCache: params.bustCache,
-      }),
-      listRecentTransactions({ owner: params.owner, days }),
+      liquidityPromise,
+      transactionPromise,
     ]);
 
     const assets = uniqueAssetsFromPositions(liquidityResult.positions);

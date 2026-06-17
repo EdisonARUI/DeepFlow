@@ -226,7 +226,7 @@ function detectMissingPrices(positions: PositionLike[], prices: Record<string, n
   const assets = new Set(positions.map((p) => p.asset));
   const missing = [...assets].filter((asset) => resolveUsdPrice(asset, prices) === undefined);
   if (missing.length === 0) return undefined;
-  return `部分资产缺少 USD 价格（${missing.join(", ")}），已按 $0 计入统计。`;
+  return `Missing USD prices for assets (${missing.join(", ")}); counted as $0.`;
 }
 
 export function mapToPortfolioView(input: MapToPortfolioViewInput): PortfolioView {
