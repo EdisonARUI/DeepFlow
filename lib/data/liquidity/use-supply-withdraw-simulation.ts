@@ -77,8 +77,7 @@ export function useSupplyWithdrawSimulation(
         return;
       }
 
-      const canExecuteOnChain =
-        writeMode === "execute" && operation === "supply" && !useWithdrawBootstrap;
+      const canExecuteOnChain = writeMode === "execute" && !useWithdrawBootstrap;
 
       setStatus("simulating");
       setError(undefined);
