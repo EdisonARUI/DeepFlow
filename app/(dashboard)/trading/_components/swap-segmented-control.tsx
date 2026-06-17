@@ -13,21 +13,28 @@ type SwapSegmentedControlProps = {
   value: TradeFundLocation;
   onChange: (value: TradeFundLocation) => void;
   label?: string;
+  variant?: "source" | "destination";
 };
 
 export function SwapSegmentedControl({
   value,
   onChange,
   label,
+  variant = "source",
 }: SwapSegmentedControlProps) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex items-center justify-between gap-3">
       {label && (
-        <span className="text-[11px] tracking-[1.1px] text-text-muted uppercase">
+        <span
+          className={cn(
+            "text-base font-bold tracking-[0.6px] uppercase underline",
+            variant === "source" ? "text-accent-cyan-pill" : "text-accent-brand-badge",
+          )}
+        >
           {label}
         </span>
       )}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2.5">
         {FUND_LOCATIONS.map((option) => {
           const isSelected = option.id === value;
           return (
@@ -36,10 +43,10 @@ export function SwapSegmentedControl({
               type="button"
               onClick={() => onChange(option.id)}
               className={cn(
-                "cursor-pointer rounded px-[13px] py-[7px] text-[11px] tracking-[0.55px] uppercase transition-colors",
+                "flex h-6 min-w-[60px] cursor-pointer items-center justify-center rounded-full px-2 text-[10px] tracking-[0.6px] uppercase transition-colors",
                 isSelected
-                  ? "border border-accent-cyan bg-accent-cyan-muted text-accent-cyan shadow-[0_0_10px_rgba(0,224,255,0.15)]"
-                  : "border border-border-default bg-bg-secondary/50 text-text-muted hover:border-accent-cyan/40",
+                  ? "bg-accent-cyan-pill text-black"
+                  : "bg-bg-pill-inactive text-text-primary hover:bg-bg-pill-inactive/80",
               )}
             >
               {option.label}

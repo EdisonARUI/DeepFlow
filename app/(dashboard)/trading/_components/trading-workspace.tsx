@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
 import { useLiquidityPositions } from "@/lib/data/liquidity/use-liquidity-positions";
+import { resolveTradingWriteMode } from "@/lib/data/trading/resolve-trading-write-mode";
 import {
   findPositionForLocation,
   resolveBalanceForLocation,
@@ -15,6 +16,31 @@ import { getSwapAssets } from "./trading-utils";
 import { DeepbookOrders } from "./deepbook-orders";
 import { MarketPairs } from "./market-pairs";
 import { SwapWidget } from "./swap-widget";
+
+function SkeletonCard({ className }: { className?: string }) {
+  return (
+    <div className={`rounded-[28px] bg-white/5 ${className ?? ""}`.trim()} aria-hidden />
+  );
+}
+
+function TradingWorkspaceSkeleton() {
+  return (
+    <div className="flex animate-pulse flex-col gap-5 rounded-[45px] bg-bg-dashboard-shell p-5">
+      <SkeletonCard className="h-10 w-full" />
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[5fr_6fr_5fr]">
+        <SkeletonCard className="h-[520px]" />
+        <SkeletonCard className="h-[520px]" />
+        <SkeletonCard className="h-[520px]" />
+      </div>
+    </div>
+  );
+}
+
+function TradingShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-5 rounded-[45px] bg-bg-dashboard-shell p-5">{children}</div>
+  );
+}
 
 export function TradingWorkspace() {
   const account = useCurrentAccount();
@@ -40,16 +66,22 @@ export function TradingWorkspace() {
     selectedMarket?.poolKey,
   );
 
-  const { positions, isLoading: positionsLoading } = useLiquidityPositions();
+  const { positions, isLoading: positionsLoading, refetch: refetchPositions } =
+    useLiquidityPositions();
+
+  const writeMode = resolveTradingWriteMode();
 
   const {
     quote,
     status: executeStatus,
     error: executeError,
+    txDigest,
     refreshQuote,
     simulate,
     reset: resetSimulation,
-  } = useTradeSimulation();
+  } = useTradeSimulation({
+    onExecuted: () => refetchPositions({ bustCache: true }),
+  });
 
   const { from: fromAsset, to: toAsset } = useMemo(() => {
     if (!selectedMarket) return { from: undefined, to: undefined };
@@ -118,31 +150,23 @@ export function TradingWorkspace() {
   ]);
 
   if (marketsLoading || positionsLoading) {
-    return (
-      <div className="flex min-h-[calc(100vh-4rem)] flex-col gap-4 p-4">
-        <p className="text-sm text-text-muted">Loading trading data…</p>
-      </div>
-    );
+    return <TradingWorkspaceSkeleton />;
   }
 
   if (marketsError || !selectedMarket) {
     return (
-      <div className="flex min-h-[calc(100vh-4rem)] flex-col gap-4 p-4">
+      <TradingShell>
         <p className="text-sm text-text-muted">
           Failed to load markets{marketsError ? `: ${marketsError.message}` : ""}
         </p>
-      </div>
+      </TradingShell>
     );
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] flex-col gap-4 p-4">
-      {!account && (
-        <p className="text-sm text-text-muted">
-          连接钱包以查看个人 DeepBook 订单并执行模拟；行情数据仍可浏览。
-        </p>
-      )}
-      <div className="grid flex-1 grid-cols-1 gap-4 xl:grid-cols-[260px_1fr_260px]">
+    <TradingShell>
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[5fr_6fr_5fr]">
         <MarketPairs
           markets={markets}
           selectedPoolKey={selectedMarket.poolKey}
@@ -166,6 +190,8 @@ export function TradingWorkspace() {
           onExecute={handleExecute}
           executeStatus={executeStatus}
           executeError={executeError}
+          txDigest={txDigest}
+          writeMode={writeMode}
         />
         <DeepbookOrders
           orders={orders}
@@ -173,6 +199,6 @@ export function TradingWorkspace() {
           emptyMessage={emptyMessage}
         />
       </div>
-    </div>
+    </TradingShell>
   );
 }

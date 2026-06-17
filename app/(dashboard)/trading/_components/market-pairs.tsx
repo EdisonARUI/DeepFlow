@@ -1,9 +1,7 @@
 "use client";
 
-import { LayoutGrid } from "lucide-react";
-import { PairAssetIcon } from "@/components/pair-asset-icon";
-import { TerminalLabel } from "@/components/terminal-label";
-import { TerminalPanel } from "@/components/terminal-panel";
+import { AssetIcon } from "@/components/asset-icon";
+import { DashboardPanel } from "@/components/dashboard-panel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { TradingMarketView } from "@/lib/data/trading/types";
@@ -22,44 +20,45 @@ export function MarketPairs({
   isLoading,
 }: MarketPairsProps) {
   return (
-    <TerminalPanel
-      className="h-full"
-      contentClassName="p-0"
-      title={
-        <div className="flex items-center gap-2">
-          <LayoutGrid className="size-3 text-accent-cyan" />
-          <TerminalLabel>MARKET_PAIRS</TerminalLabel>
-        </div>
-      }
+    <DashboardPanel
+      title="MARKET PAIRS"
+      className="h-full min-h-[500px] xl:min-h-[795px]"
+      contentClassName="flex min-h-0 flex-col"
     >
-      <ScrollArea className="h-[680px]">
+      <ScrollArea className="min-h-0 flex-1">
         {isLoading && (
           <p className="px-3 py-3 text-[12px] text-text-muted">Loading markets…</p>
         )}
         {!isLoading &&
-          markets.map((market) => (
-            <button
-              key={market.poolKey}
-              type="button"
-              onClick={() => onSelectPoolKey(market.poolKey)}
-              className={cn(
-                "flex w-full items-center justify-between border-b border-border-muted/40 px-3 py-3 text-left text-[12px] tracking-[0.6px]",
-                selectedPoolKey === market.poolKey
-                  ? "border-l-2 border-l-accent-cyan bg-accent-cyan/10"
-                  : "hover:bg-bg-panel-header/50",
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <PairAssetIcon
-                  baseAsset={market.baseAsset}
-                  quoteAsset={market.quoteAsset}
-                />
-                <span>{market.pair}</span>
-              </div>
-              <span className="text-text-muted">{market.price}</span>
-            </button>
-          ))}
+          markets.map((market) => {
+            const isSelected = selectedPoolKey === market.poolKey;
+
+            return (
+              <button
+                key={market.poolKey}
+                type="button"
+                onClick={() => onSelectPoolKey(market.poolKey)}
+                className={cn(
+                  "relative flex w-full items-center justify-between border-b border-border-default px-3 py-3 text-left text-[12px] tracking-[0.6px] hover:bg-selection-highlight-hover",
+                  isSelected && "bg-selection-highlight text-black hover:bg-selection-highlight",
+                )}
+              >
+                {isSelected && (
+                  <span className="pointer-events-none absolute inset-y-1 left-0 w-[3px] rounded-full bg-selection-highlight" />
+                )}
+                <div className="flex items-center gap-1">
+                  <AssetIcon asset={market.baseAsset} size="md" />
+                  <span className={cn(isSelected ? "text-black" : "text-text-primary")}>
+                    {market.pair}
+                  </span>
+                </div>
+                <span className={cn(isSelected ? "text-black/70" : "text-text-muted")}>
+                  {market.price}
+                </span>
+              </button>
+            );
+          })}
       </ScrollArea>
-    </TerminalPanel>
+    </DashboardPanel>
   );
 }
