@@ -2,9 +2,22 @@
 
 ## 当前任务
 
-Portfolio 未连接钱包交易历史提示文案移除——已完成。
+Favicon 使用 accent-brand-badge 背景——已完成。
 
 ## 已完成
+
+- [x] **Favicon 使用 accent-brand-badge 背景**：
+  - 新增 `public/brand/app-icon-badge.svg`：`#babbff` 圆形底 + 居中 `brand-icon`（对齐 TopBar 徽章视觉，图标宽约容器 62.5%）。
+  - 覆盖 `app/icon.svg`、`app/apple-icon.png`（180×180）、`app/favicon.ico`（32×32）。
+  - `app/layout.tsx`：`metadata.icons.icon` 从 `/figma/icons/logo.svg` 改为 `/icon.svg`。
+  - `npm run build` 通过。
+
+- [x] **修复标签栏与钱包签名品牌展示**：
+  - 根因：项目未配置 `app/icon.*` / favicon，`metadata.title` 为 `"Deepflow Terminal"`，dApp Kit 未显式设置 `slushWalletConfig.appName`；钱包签名弹窗依赖 `application-name` meta 与站点 favicon。
+  - 新增 `app/icon.svg`（复制 `public/figma/icons/logo.svg`）、`app/apple-icon.png`（180×180 PNG）、`app/favicon.ico`（32×32，供钱包扩展抓取 `/favicon.ico`）。
+  - `app/layout.tsx`：`title` / `applicationName` 统一为 `"DeepFlow"`，补充 `icons` 指向 logo 与 apple-icon。
+  - `app/dapp-kit.ts`：新增 `slushWalletConfig: { appName: "DeepFlow" }`。
+  - 验证：`npm run build` 通过；dev 下页面 `<title>DeepFlow</title>`、`application-name` meta、`/favicon.ico` / `/apple-icon.png` / `/icon.svg` 均可访问。
 
 - [x] **Landing 首次跳转 dev 预编译预热修正（Portfolio/Liquidity/Trading）**：
   - 依据用户实测日志 `Compiling /portfolio ... 7.7s` 确认瓶颈为 Next dev on-demand compile（非 Portfolio 页面内数据加载）。
