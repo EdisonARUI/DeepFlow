@@ -94,4 +94,66 @@ describe("mapToPortfolioView with DeepBook prices", () => {
     expect(view.summary.totalAssets).toBeCloseTo(13.29 * 0.748, 2);
     expect(view.summary.workingCapital).toBe(0);
   });
+
+  it("includes SUILEND supplied balance in protocol exposure treemap", () => {
+    const twoSui = BigInt("2000000000");
+    const view = mapToPortfolioView({
+      positions: [
+        {
+          protocol: "[SUILEND]",
+          asset: "SUI",
+          coinType: "0x2::sui::SUI",
+          suppliedBalance: twoSui,
+          walletCoinBalance: BigInt(0),
+          decimals: 9,
+        },
+      ],
+      transactions: [],
+      usdPrices: { SUI: 0.748 },
+    });
+
+    const suilendExposure = view.exposure.find((item) => item.name === "SUILEND");
+    expect(suilendExposure).toBeDefined();
+    expect(suilendExposure?.value).toBeCloseTo(2 * 0.748, 2);
+    expect(suilendExposure?.percent).toBe(100);
+  });
+
+  it("buckets NAVI, SUILEND, and WALLET exposure separately", () => {
+    const view = mapToPortfolioView({
+      positions: [
+        {
+          protocol: "[NAVI]",
+          asset: "USDC",
+          coinType: "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+          suppliedBalance: BigInt("1000000000"),
+          walletCoinBalance: BigInt(0),
+          decimals: 6,
+        },
+        {
+          protocol: "[SUILEND]",
+          asset: "SUI",
+          coinType: "0x2::sui::SUI",
+          suppliedBalance: BigInt("2000000000"),
+          walletCoinBalance: BigInt(0),
+          decimals: 9,
+        },
+        {
+          protocol: "[NAVI]",
+          asset: "SUI",
+          coinType: "0x2::sui::SUI",
+          suppliedBalance: BigInt(0),
+          walletCoinBalance: BigInt("1000000000"),
+          decimals: 9,
+        },
+      ],
+      transactions: [],
+      usdPrices: { SUI: 1, USDC: 1 },
+    });
+
+    const byName = Object.fromEntries(view.exposure.map((item) => [item.name, item]));
+    expect(byName.NAVI?.value).toBe(1000);
+    expect(byName.SUILEND?.value).toBe(2);
+    expect(byName.WALLET?.value).toBe(1);
+    expect(view.exposure).toHaveLength(3);
+  });
 });

@@ -164,16 +164,16 @@ function buildPriceWarning(
   fallbackUsed: string[],
   missing: string[],
 ): string | undefined {
-  const parts: string[] = ["估值基于 DeepBook 中间价（USDC 计价）。"];
+  const parts: string[] = ["Valuation uses DeepBook mid prices (USDC-denominated)."];
 
   if (fallbackUsed.length > 0) {
     parts.push(
-      `以下资产无 DeepBook 池，已回退静态价：${fallbackUsed.join(", ")}。`,
+      `No DeepBook pools for: ${fallbackUsed.join(", ")}. Static fallback prices applied.`,
     );
   }
 
   if (missing.length > 0) {
-    parts.push(`以下资产缺少 USD 价格，已按 $0 计入：${missing.join(", ")}。`);
+    parts.push(`Missing USD prices counted as $0 for: ${missing.join(", ")}.`);
   }
 
   return parts.length > 1 ? parts.join(" ") : parts[0];
