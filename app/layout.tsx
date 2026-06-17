@@ -14,13 +14,27 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
 });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "DeepFlow",
   applicationName: "DeepFlow",
   description: "Sui DeFi atomic execution dashboard",
   icons: {
-    icon: "/icon.svg",
-    apple: "/apple-icon.png",
+    icon: [
+      { url: "/icon.png", type: "image/png", sizes: "192x192" },
+      { url: "/apple-touch-icon.png", type: "image/png", sizes: "180x180" },
+    ],
+    shortcut: "/icon.png",
+    apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    title: "DeepFlow",
+    description: "Sui DeFi atomic execution dashboard",
+    images: [{ url: "/apple-touch-icon.png", width: 180, height: 180, alt: "DeepFlow" }],
   },
 };
 

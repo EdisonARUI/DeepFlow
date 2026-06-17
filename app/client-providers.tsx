@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { EnsureSiteIcon } from "@/components/ensure-site-icon";
 
 const Providers = dynamic(
   () => import("./providers").then((mod) => mod.Providers),
@@ -8,5 +9,10 @@ const Providers = dynamic(
 );
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
-  return <Providers>{children}</Providers>;
+  return (
+    <>
+      <EnsureSiteIcon />
+      <Providers>{children}</Providers>
+    </>
+  );
 }
