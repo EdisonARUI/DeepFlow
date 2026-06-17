@@ -2,9 +2,36 @@
 
 ## 当前任务
 
-Favicon 使用 accent-brand-badge 背景——已完成。
+修复钱包签名弹窗 Logo 显示（第二轮加固）——已完成代码侧；待用户断开重连 Slush 后验收。
 
 ## 已完成
+
+- [x] **钱包签名 Logo 第二轮加固（apple-touch-icon + manifest + 192px icon）**：
+  - 用户反馈：浏览器标签页 favicon 已正常，但 Slush 扩展签名弹窗仍显示地球图标。
+  - 根因补充：`/apple-touch-icon.png` 此前 404（仅存在 `/apple-icon.png`）；部分钱包/扩展在连接或签名时优先抓取标准根路径；且 Slush 可能在**首次连接时缓存** dApp 图标，仅改 favicon 不重连不会更新弹窗。
+  - `scripts/generate-brand-icons.mjs`：`app/icon.png` 升级为 192×192；`favicon.ico` 含 16/32/48；同步输出 `public/icon.png`、`public/favicon.ico`、`public/apple-touch-icon.png`。
+  - 新增 `app/manifest.ts`（`/manifest.webmanifest`）；`components/ensure-site-icon.tsx` 客户端补全 shortcut/icon/apple-touch-icon link；`client-providers.tsx` 挂载。
+  - `app/layout.tsx`：`icons` / `openGraph.images` 指向 `/icon.png` 与 `/apple-touch-icon.png`。
+  - 验证：`npm run build` 通过；`/apple-touch-icon.png` 200；`/manifest.webmanifest` 200。
+  - **用户验收步骤**：重启 dev server → Slush 扩展 Connected Apps 断开 DeepFlow → 硬刷新 → 重新 Connect → 再触发签名。
+  - **第三轮修复（public/app 图标路径冲突）**：`public/favicon.ico` / `public/icon.png` 与 `app/` 同名文件冲突导致 dev 下 `/favicon.ico`、`/icon.png` 500，钱包与 Connected Apps 均回退地球图标；已删除冲突的 `public/` 副本，仅保留 `public/apple-touch-icon.png`；`generate-brand-icons.mjs` 同步修正；`layout.tsx` 补充 `metadataBase`。
+
+- [x] **修复钱包签名弹窗 Logo（PNG-first favicon）**：
+  - 根因：Slush 扩展签名弹窗从页面 favicon 抓取 dApp 图标（dApp Kit 无 `appIcon` 配置）；旧 `app/favicon.ico` 实为 PNG 伪装 ICO，且 head 暴露 `/icon.svg`，扩展解析失败后回退地球图标。
+  - 以 `public/brand/app-icon-badge.png`（1280×1280）为源，新增 `scripts/generate-brand-icons.mjs` + `npm run generate:icons`，生成 `app/icon.png`（32×32）、`app/apple-icon.png`（180×180）、真实 `app/favicon.ico`（16+32 ICO）。
+  - 删除 `app/icon.svg`；`app/layout.tsx`：`metadata.icons` 改为 PNG-first，补充 `shortcut: "/icon.png"`。
+  - 验证：`npm run build` 通过；生产 head 含 `shortcut icon` → `/icon.png`、`/favicon.ico`（真实 ICO）、无 `/icon.svg`。
+  - 待用户本地：Slush 扩展硬刷新后触发 `signAndExecuteTransaction` 验收签名弹窗 logo。
+
+- [x] **Liquidity Position 样式与左右布局调整**（Figma `196:264` / `196:29`）：
+  - `liquidity-workspace.tsx` / `loading.tsx`：DEFI 与 POSITION 改为 `flex` 左右排布（左 `flex-1`、右固定 `420px`），窄屏纵向堆叠。
+  - `position-management.tsx`：面板标题 `POSITION_MANAGEMENT` → `POSITION`。
+  - `supply-position-form.tsx` / `withdraw-position-form.tsx`：移除双列 grid，改为单列纵向（上 banner+输入+滑块，下 overview+独立按钮）。
+  - `position-amount-input.tsx`：新增 `footer` 插槽嵌入滑块；`INPUT_AMOUNT` 大写标签；placeholder `#353534`；资产选择器 `w-[100px]`。
+  - `transaction-overview-panel.tsx`：新增 `actionPlacement="outside"`，overview 卡片与操作按钮分离。
+  - `position-protocol-banner.tsx`：标签改为 `SUPPLY_TO` / `WITHDRAW_FROM`。
+  - `position-percentage-slider.tsx`：滑块轨道色 `border-default`。
+  - `npm run build` 通过。
 
 - [x] **Favicon 使用 accent-brand-badge 背景**：
   - 新增 `public/brand/app-icon-badge.svg`：`#babbff` 圆形底 + 居中 `brand-icon`（对齐 TopBar 徽章视觉，图标宽约容器 62.5%）。
@@ -285,6 +312,11 @@ Favicon 使用 accent-brand-badge 背景——已完成。
   - Portfolio 联动：`liquidity-data-events.ts` + `usePortfolio` 订阅 `notifyLiquidityPositionsChanged`。
   - 测试：`navi-liquidity-adapter.test.ts`（supply / emode 换算）；已验证 `npm test`（90 passed, 17 skipped）与 `npm run build`。
 
+- [x] **Liquidity Withdraw 写路径 execute 模式**：
+  - `use-supply-withdraw-simulation`：`canExecuteOnChain` 放宽为 `writeMode === "execute" && !useWithdrawBootstrap`，Withdraw（有持仓）与 Supply 共用签名上链路径；bootstrap 仍仅 simulate。
+  - `position-management` / `withdraw-position-form`：补齐 `loadingLabel`、executed 状态 tx digest 链接、`onExecuted` 后 `refetch({ bustCache: true })`。
+  - 更新 `ARCHITECTURE.md`、`PRODUCT.md`。
+
 - [x] **Liquidity Supply 写路径 execute 模式**：
   - 新增 `NEXT_PUBLIC_LIQUIDITY_WRITE_MODE`（默认 `simulate`；`execute` 时 Supply dry-run 通过后 `dAppKit.signAndExecuteTransaction` 上链）。
   - `lib/data/liquidity/resolve-liquidity-write-mode.ts`；扩展 `use-supply-withdraw-simulation`（状态 `executing` / `executed` + tx digest）。
@@ -459,10 +491,9 @@ Favicon 使用 accent-brand-badge 背景——已完成。
 ## 未完成 / 待处理
 
 - [ ] Security 页映射 `ExecutionPolicy` 字段到 `lib/data/*`。
-- [ ] Liquidity **Withdraw 写路径 execute**：Supply 已支持；Withdraw 与 bootstrap 仍仅 simulate。
 - [ ] 扩展 Liquidity 协议适配器：Scallop / Cetus 等（Suilend 已完成）。
 - [ ] 创建 Move 合约模块：`automation_vault`、`policy_guard`、`credit_router`。
-- [ ] 浏览器内手动验证：连接 mainnet 钱包后 Liquidity 页 Supply **execute 模式**小额上链（`.env.local` 设 `NEXT_PUBLIC_LIQUIDITY_WRITE_MODE=execute`）；simulate 模式验证 **Simulation passed**（无签名）。
+- [ ] 浏览器内手动验证：连接 mainnet 钱包后 Liquidity 页 Supply / Withdraw **execute 模式**小额上链（`.env.local` 设 `NEXT_PUBLIC_LIQUIDITY_WRITE_MODE=execute`）；simulate 模式验证 **Simulation passed**（无签名）。
 - [ ] 浏览器内手动验证：Trading 页 9 条 SOURCE×DESTINATION 路由 **execute 模式**小额上链（`.env.local` 设 `NEXT_PUBLIC_DATA_SOURCE=live` + `NEXT_PUBLIC_TRADING_WRITE_MODE=execute`）；simulate 模式验证「模拟通过」（无签名）。
 
 ## 下一步建议
@@ -475,7 +506,7 @@ Favicon 使用 accent-brand-badge 背景——已完成。
 - **DeFi 层与 dApp Kit 固定 mainnet**；不再使用 testnet 或 `NEXT_PUBLIC_SUI_NETWORK` 切换。
 - 切 mainnet 后 **`NEXT_PUBLIC_NAVI_ASSETS` 不得使用 `*_TEST` 后缀**（如 `USDC_TEST`）；应使用 `USDC,SUIUSDE,SUI,WAL,DEEP,XBTC` 或删除该变量使用默认白名单。代码会对遗留 `*_TEST` 配置自动映射并 `console.warn`。
 - Liquidity live 模式依赖 `@naviprotocol/lending` 与 `@suilend/sdk`；NAVI 构建时可能对 `getFullnodeUrl` 有 webpack 警告，运行时通过 `lib/shims/mysten-sui-client.ts` 兼容。Suilend 使用 gRPC client，无需 mysten v1 shim。
-- **`NEXT_PUBLIC_LIQUIDITY_WRITE_MODE`**：默认 `simulate`（仅 dry-run）；`execute` 时 **Supply** dry-run 通过后签名上链。Withdraw / bootstrap 始终 simulate。修改后需重启 `npm run dev`。
+- **`NEXT_PUBLIC_LIQUIDITY_WRITE_MODE`**：默认 `simulate`（仅 dry-run）；`execute` 时 **Supply / Withdraw**（非 bootstrap）dry-run 通过后签名上链。bootstrap 始终 simulate。修改后需重启 `npm run dev`。
 - **`NEXT_PUBLIC_TRADING_WRITE_MODE`**：默认 `simulate`（仅 dry-run）；`execute` 时 dry-run 通过后签名上链，需同时设 `NEXT_PUBLIC_DATA_SOURCE=live`。修改后需重启 `npm run dev`。
 - **`NEXT_PUBLIC_SUILEND_ASSETS`** 默认与 NAVI 白名单相同；可选 **`NEXT_PUBLIC_SUILEND_USE_BETA_MARKET=true`** 切换 beta market（由 `@suilend/sdk` 读取）。
 - Suilend 首次 supply（无 obligation）须在 PTB 末尾 `sendObligationToUser`（`finalizeNewSuilendObligationCap`）；已有 obligation 则复用链上 cap id。

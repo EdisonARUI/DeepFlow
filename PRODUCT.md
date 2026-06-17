@@ -253,7 +253,7 @@ Liquidity 页是 DeFi 协议 supply / withdraw 头寸管理入口，展示 NAVI 
 | 模式 | 环境变量 | 行为 |
 |------|----------|------|
 | `simulate`（默认） | `NEXT_PUBLIC_LIQUIDITY_WRITE_MODE` 未设置或 `simulate` | Supply / Withdraw 仅 mainnet dry-run，成功显示「Simulation passed」，不弹钱包签名 |
-| `execute` | `NEXT_PUBLIC_LIQUIDITY_WRITE_MODE=execute` | **Supply** dry-run 通过后弹出钱包签名并上链；Withdraw 与 bootstrap 仍仅模拟 |
+| `execute` | `NEXT_PUBLIC_LIQUIDITY_WRITE_MODE=execute` | **Supply / Withdraw**（非 bootstrap）dry-run 通过后弹出钱包签名并上链；bootstrap 仍仅模拟 |
 
 读路径（池/APY/余额）仍由 `NEXT_PUBLIC_DATA_SOURCE`（`mock` / `live`）独立控制，与写路径模式无关。
 

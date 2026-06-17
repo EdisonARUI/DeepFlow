@@ -356,18 +356,18 @@ PositionManagement（Supply / Withdraw 按钮）
   -> simulateSupplyWithdraw({ protocol: navi | suilend }) / simulateSupplyThenWithdraw()
   -> buildNavi*Tx | buildSuilend*Tx
   -> dryRunTransaction（预检，始终执行）
-  -> [NEXT_PUBLIC_LIQUIDITY_WRITE_MODE=execute 且 operation=supply]
+  -> [NEXT_PUBLIC_LIQUIDITY_WRITE_MODE=execute 且非 bootstrap]
        dAppKit.signAndExecuteTransaction（钱包签名上链）
 ```
 
-- **写路径模式**：`NEXT_PUBLIC_LIQUIDITY_WRITE_MODE` 默认 `simulate`（仅 dry-run）；`execute` 时在 Supply dry-run 通过后调用 `useDAppKit().signAndExecuteTransaction` 实际上链。Withdraw 与 supply→withdraw bootstrap 始终仅模拟。
+- **写路径模式**：`NEXT_PUBLIC_LIQUIDITY_WRITE_MODE` 默认 `simulate`（仅 dry-run）；`execute` 时在 Supply / Withdraw（非 bootstrap）dry-run 通过后调用 `useDAppKit().signAndExecuteTransaction` 实际上链。supply→withdraw bootstrap 始终仅模拟。
 
 - **协议路由**：`LiquidityPositionView.protocolId`（`navi` / `suilend`）传入 `@deepflow/sdk/supply-withdraw`；默认仍为 `navi` 以保持向后兼容。
 - **Suilend 新建 obligation**：同 PTB 内 `createObligation` + `depositIntoObligation` 后须调用 `sendObligationToUser`（`finalizeNewSuilendObligationCap`）将 `ObligationOwnerCap` 转回 sender，否则 dryRun 报 `UnusedValueWithoutDrop`。
 - **withdraw bootstrap**：当 `suppliedBalance < amount` 时，Dashboard hook 调用 `simulateSupplyThenWithdraw`（单 PTB 内先 deposit 再 withdraw），用于无协议持仓时的 withdraw 模拟验证；有持仓时仍走纯 `withdraw` PTB。Suilend bootstrap 使用 `withdraw(..., addRefreshCalls=false)` 避免同学 PTB 内链上 obligation 状态未刷新。
 - **dry run**：`simulateTransaction({ checksEnabled: true })`（等价旧 `dryRunTransactionBlock`）
 - **devInspect**：`simulateTransaction({ checksEnabled: false, include: { commandResults: true } })`
-- 模拟不上链、不消耗资产；`execute` 模式下 Supply 成功签名后会消耗钱包资产。仍需真实 mainnet sender 地址与 coin objects（supply / bootstrap）或 NAVI supply 余额（纯 withdraw）。
+- 模拟不上链、不消耗资产；`execute` 模式下 Supply / Withdraw 成功签名后会改变链上持仓与钱包余额。仍需真实 mainnet sender 地址与 coin objects（supply / bootstrap）或协议 supply 余额（纯 withdraw）。
 - 集成测试：`sdk/tests/navi-supply-withdraw.integration.test.ts`、`sdk/tests/suilend-supply-withdraw.integration.test.ts`，门禁 `RUN_MAINNET_INTEGRATION=1` + `INTEGRATION_SENDER`。
 
 环境变量：
@@ -380,7 +380,7 @@ PositionManagement（Supply / Withdraw 按钮）
 | `NEXT_PUBLIC_NAVI_ASSETS` | 见上白名单 | 可选，逗号分隔 NAVI Main Market 标的覆盖 |
 | `NEXT_PUBLIC_SUILEND_ASSETS` | 见上白名单 | 可选，逗号分隔 Suilend reserve 标的覆盖 |
 | `NEXT_PUBLIC_SUILEND_USE_BETA_MARKET` | `false` | 可选，`true` 时使用 Suilend beta lending market（`@suilend/sdk` 内置常量） |
-| `NEXT_PUBLIC_LIQUIDITY_WRITE_MODE` | `simulate` | `simulate` 仅 dry-run；`execute` 时 Supply dry-run 通过后签名上链 |
+| `NEXT_PUBLIC_LIQUIDITY_WRITE_MODE` | `simulate` | `simulate` 仅 dry-run；`execute` 时 Supply / Withdraw（非 bootstrap）dry-run 通过后签名上链 |
 | `NEXT_PUBLIC_TRADING_WRITE_MODE` | `simulate` | `simulate` 仅 dry-run；`execute` 时 Trading dry-run 通过后签名上链（需 `DATA_SOURCE=live`） |
 | `RUN_MAINNET_INTEGRATION` | — | SDK 集成测试开关（仅 `sdk/tests`，非 Dashboard） |
 | `INTEGRATION_SENDER` | — | mainnet 测试地址（集成测试） |
