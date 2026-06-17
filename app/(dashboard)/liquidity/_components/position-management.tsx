@@ -38,7 +38,9 @@ export function PositionManagement({
   const supplySimulation = useSupplyWithdrawSimulation("supply", {
     onExecuted: () => onPositionsRefetch?.({ bustCache: true }),
   });
-  const withdrawSimulation = useSupplyWithdrawSimulation("withdraw");
+  const withdrawSimulation = useSupplyWithdrawSimulation("withdraw", {
+    onExecuted: () => onPositionsRefetch?.({ bustCache: true }),
+  });
 
   useEffect(() => {
     supplySimulation.reset();
@@ -78,15 +80,36 @@ export function PositionManagement({
     return supplySimulation.error;
   })();
 
-  const withdrawStatusMessage =
-    withdrawSimulation.status === "success"
-      ? "Simulation passed"
-      : withdrawSimulation.error;
+  const withdrawLoadingLabel =
+    withdrawSimulation.status === "executing" ? "Signing..." : "Simulating...";
+
+  const withdrawStatusMessage = (() => {
+    if (withdrawSimulation.status === "executed" && withdrawSimulation.txDigest) {
+      const digest = withdrawSimulation.txDigest;
+      return (
+        <>
+          Tx submitted:{" "}
+          <a
+            href={getTransactionExplorerUrl(digest)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent-cyan underline"
+          >
+            {truncateDigest(digest)}
+          </a>
+        </>
+      );
+    }
+    if (withdrawSimulation.status === "success") {
+      return "Simulation passed";
+    }
+    return withdrawSimulation.error;
+  })();
 
   return (
     <Tabs defaultValue="supply">
       <DashboardPanel
-        title="POSITION_MANAGEMENT"
+        title="POSITION"
         actions={
           <TabsList className="flex h-8 items-center rounded-[20px] border border-accent-cyan-pill bg-transparent p-0">
             <TabsTrigger value="supply" className={TAB_TRIGGER_CLASS}>
@@ -137,6 +160,7 @@ export function PositionManagement({
               })
             }
             isSimulating={withdrawSimulation.isSimulating}
+            loadingLabel={withdrawLoadingLabel}
             disabled={!withdrawSimulation.isWalletConnected}
             simulationStatus={withdrawSimulation.status}
             statusMessage={withdrawStatusMessage}

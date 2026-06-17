@@ -21,7 +21,10 @@ export function PositionPercentageSlider({
         onValueChange={(next) => onValueChange(Array.isArray(next) ? [...next] : [next])}
         max={100}
         step={25}
-        className={cn(accentClassName)}
+        className={cn(
+          "[&_[data-slot=slider-track]]:bg-border-default",
+          accentClassName,
+        )}
       />
       <div className="flex justify-between text-[11px] font-bold text-text-muted uppercase">
         {PERCENTAGE_MARKS.map((mark) => (

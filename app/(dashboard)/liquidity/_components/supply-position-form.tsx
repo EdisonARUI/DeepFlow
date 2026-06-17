@@ -71,8 +71,8 @@ export function SupplyPositionForm({
   };
 
   return (
-    <div className="grid gap-5 lg:grid-cols-2">
-      <div className="space-y-5">
+    <div className="flex flex-col justify-between gap-5">
+      <div className="flex flex-col gap-5">
         <PositionProtocolBanner
           mode="supply"
           protocol={selectedPosition.protocol}
@@ -89,8 +89,10 @@ export function SupplyPositionForm({
             const position = protocolAssets.find((item) => item.asset === asset);
             if (position) onAssetChange(position.id);
           }}
+          footer={
+            <PositionPercentageSlider value={slider} onValueChange={handleSliderChange} />
+          }
         />
-        <PositionPercentageSlider value={slider} onValueChange={handleSliderChange} />
       </div>
       <TransactionOverviewPanel
         rows={[
@@ -104,6 +106,7 @@ export function SupplyPositionForm({
         disabled={disabled}
         statusMessage={statusMessage}
         statusVariant={statusVariant}
+        actionPlacement="outside"
       />
     </div>
   );

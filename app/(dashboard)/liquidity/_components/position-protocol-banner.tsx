@@ -11,7 +11,7 @@ export function PositionProtocolBanner({
   protocol,
   protocolColor,
 }: PositionProtocolBannerProps) {
-  const label = mode === "supply" ? "Supply_to" : "Withdraw_from";
+  const label = mode === "supply" ? "SUPPLY_TO" : "WITHDRAW_FROM";
 
   return (
     <div className="flex h-9 items-center justify-between rounded-[20px] bg-bg-secondary px-4">

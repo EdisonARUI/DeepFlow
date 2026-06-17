@@ -16,6 +16,7 @@ type PositionAmountInputProps = {
   selectedAsset: string;
   assets: string[];
   onAssetChange: (asset: string) => void;
+  footer?: React.ReactNode;
 };
 
 export function PositionAmountInput({
@@ -26,11 +27,12 @@ export function PositionAmountInput({
   selectedAsset,
   assets,
   onAssetChange,
+  footer,
 }: PositionAmountInputProps) {
   return (
     <div className="flex flex-col justify-between gap-4 rounded-[20px] bg-bg-secondary p-4">
       <div className="flex justify-between text-[11px] text-text-muted uppercase">
-        <span className="font-bold">Input_amount</span>
+        <span className="font-bold">INPUT_AMOUNT</span>
         <span className="text-[12px] normal-case tracking-[0.6px]">
           {balanceLabel}: {balance}
         </span>
@@ -40,7 +42,7 @@ export function PositionAmountInput({
           value={amount}
           onChange={(e) => onAmountChange(e.target.value)}
           placeholder="0.00"
-          className="h-auto flex-1 rounded-none border-0 bg-transparent p-0 text-3xl shadow-none focus-visible:ring-0"
+          className="h-auto flex-1 rounded-none border-0 bg-transparent p-0 text-3xl shadow-none placeholder:text-[#353534] focus-visible:ring-0"
         />
         <Select
           value={selectedAsset}
@@ -48,7 +50,7 @@ export function PositionAmountInput({
             if (asset) onAssetChange(asset);
           }}
         >
-          <SelectTrigger className="w-32 rounded-[4px] border-border-default bg-bg-panel-header">
+          <SelectTrigger className="w-[100px] rounded-[4px] border-border-default bg-bg-panel-header">
             <AssetIcon asset={selectedAsset} size="sm" />
             <SelectValue placeholder={selectedAsset} />
           </SelectTrigger>
@@ -62,6 +64,7 @@ export function PositionAmountInput({
           </SelectContent>
         </Select>
       </div>
+      {footer}
     </div>
   );
 }

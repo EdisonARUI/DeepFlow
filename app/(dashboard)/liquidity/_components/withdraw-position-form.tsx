@@ -22,9 +22,10 @@ type WithdrawPositionFormProps = {
   onSliderChange: (value: number[]) => void;
   onSimulate: () => void;
   isSimulating: boolean;
+  loadingLabel: string;
   disabled: boolean;
   simulationStatus: SimulationStatus;
-  statusMessage?: string;
+  statusMessage?: React.ReactNode;
 };
 
 export function WithdrawPositionForm({
@@ -37,6 +38,7 @@ export function WithdrawPositionForm({
   onSliderChange,
   onSimulate,
   isSimulating,
+  loadingLabel,
   disabled,
   simulationStatus,
   statusMessage,
@@ -47,7 +49,11 @@ export function WithdrawPositionForm({
   );
 
   const statusVariant =
-    simulationStatus === "success" ? "success" : simulationStatus === "error" ? "error" : undefined;
+    simulationStatus === "success" || simulationStatus === "executed"
+      ? "success"
+      : simulationStatus === "error"
+        ? "error"
+        : undefined;
 
   const maxBalance = selectedPosition.suppliedBalance;
 
@@ -65,8 +71,8 @@ export function WithdrawPositionForm({
   };
 
   return (
-    <div className="grid gap-5 lg:grid-cols-2">
-      <div className="space-y-5">
+    <div className="flex flex-col justify-between gap-5">
+      <div className="flex flex-col gap-5">
         <PositionProtocolBanner
           mode="withdraw"
           protocol={selectedPosition.protocol}
@@ -83,8 +89,10 @@ export function WithdrawPositionForm({
             const position = protocolAssets.find((item) => item.asset === asset);
             if (position) onAssetChange(position.id);
           }}
+          footer={
+            <PositionPercentageSlider value={slider} onValueChange={handleSliderChange} />
+          }
         />
-        <PositionPercentageSlider value={slider} onValueChange={handleSliderChange} />
       </div>
       <TransactionOverviewPanel
         rows={[
@@ -98,9 +106,11 @@ export function WithdrawPositionForm({
         actionLabel="Withdraw"
         onAction={onSimulate}
         isLoading={isSimulating}
+        loadingLabel={loadingLabel}
         disabled={disabled}
         statusMessage={statusMessage}
         statusVariant={statusVariant}
+        actionPlacement="outside"
       />
     </div>
   );
