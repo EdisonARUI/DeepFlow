@@ -201,7 +201,7 @@ export class NaviLiquidityAdapter implements LiquidityProtocolAdapter {
           err,
         );
         walletBalanceWarning =
-          "个人 supply 余额暂时无法加载，市场池数据正常展示。";
+          "Personal supply balance is temporarily unavailable. Market pool data is still shown.";
       }
 
       try {
@@ -226,7 +226,7 @@ export class NaviLiquidityAdapter implements LiquidityProtocolAdapter {
 
     if (mainMarketPools.length > 0 && rows.length === 0) {
       configurationWarning =
-        "标的白名单与 mainnet 池子 symbol 不匹配，请检查 NEXT_PUBLIC_NAVI_ASSETS（应使用 USDC,SUI,...，勿使用 *_TEST）。";
+        "Asset allowlist does not match mainnet pool symbols. Check NEXT_PUBLIC_NAVI_ASSETS (use USDC,SUI,... and avoid *_TEST).";
     }
 
     return {

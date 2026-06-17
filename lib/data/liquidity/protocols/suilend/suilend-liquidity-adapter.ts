@@ -16,7 +16,7 @@ import { createSuilendJsonRpcClient } from "./suilend-json-rpc-client";
 
 const SUILEND_PROTOCOL_ID = "suilend" as const;
 const SUILEND_PROTOCOL_LABEL = "[SUILEND]";
-const SUILEND_PROTOCOL_COLOR = "#4ADE80";
+const SUILEND_PROTOCOL_COLOR = "#e5b842";
 
 const DEFAULT_SUILEND_ASSET_ALLOWLIST = [
   "USDC",
@@ -235,7 +235,7 @@ export class SuilendLiquidityAdapter implements LiquidityProtocolAdapter {
           err,
         );
         walletBalanceWarning =
-          "个人 supply 余额暂时无法加载，市场池数据正常展示。";
+          "Personal supply balance is temporarily unavailable. Market pool data is still shown.";
       }
 
       try {
@@ -259,7 +259,7 @@ export class SuilendLiquidityAdapter implements LiquidityProtocolAdapter {
 
     if (reserves.length > 0 && rows.length === 0) {
       configurationWarning =
-        "标的白名单与 mainnet reserve symbol 不匹配，请检查 NEXT_PUBLIC_SUILEND_ASSETS。";
+        "Asset allowlist does not match mainnet reserve symbols. Check NEXT_PUBLIC_SUILEND_ASSETS.";
     }
 
     return {
