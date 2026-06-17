@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "sdk"
+    "packages/deepflow-sdk"
   ],
   "scripts": {
     "dev": "next dev --turbopack",

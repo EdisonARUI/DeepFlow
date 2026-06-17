@@ -1,0 +1,35 @@
+{
+  "name": "@deepflow/sdk",
+  "version": "0.1.0",
+  "description": "Deepflow TypeScript SDK prototype for policy-gated Sui DeFi execution intents.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./supply-withdraw": "./src/supply-withdraw.ts",
+    "./amount/parse-base-units": "./src/amount/parse-base-units.ts",
+    "./trade": "./src/trade.ts"
+  },
+  "scripts": {
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "@mysten/deepbook-v3": "^1.4.1",
+    "@mysten/bcs": "2.0.1",
+    "@mysten/sui": "^2.17.0",
+    "@naviprotocol/lending": "^1.4.6",
+    "@pythnetwork/pyth-sui-js": "2.2.0",
+    "@suilend/sdk": "^3.0.4",
+    "@suilend/sui-fe": "^3.0.7"
+  },
+  "keywords": [
+    "sui",
+    "deepbook",
+    "defi",
+    "ptb"
+  ],
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "vitest": "^4.1.7"
+  }
+}
