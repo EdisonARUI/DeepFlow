@@ -1,51 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { LaunchAppLink } from "./launch-app-link";
+import { LaunchAppLink, LANDING_LAUNCH_PILL_CLASS } from "./launch-app-link";
 import { LandingSocialLinks } from "./landing-social-links";
 
 export function LandingHeader() {
-  const [isOverHero, setIsOverHero] = useState(true);
-
-  useEffect(() => {
-    const hero = document.getElementById("landing-hero");
-    if (!hero) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsOverHero(entry.isIntersecting);
-      },
-      { threshold: 0, rootMargin: "-80px 0px 0px 0px" },
-    );
-
-    observer.observe(hero);
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-50 w-full transition-[background-color,backdrop-filter] duration-300",
-        isOverHero ? "bg-transparent" : "bg-[#020617]/95 backdrop-blur-md",
-      )}
-    >
-      <div className="mx-auto flex h-20 max-w-[1280px] items-center justify-between px-5 md:px-10">
-        <div className="flex items-center gap-3">
+    <header className="absolute left-1/2 top-0 z-20 w-full -translate-x-1/2 bg-transparent ">
+      <div className="mx-auto flex h-[100px] items-center justify-between p-5">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#babbff] md:size-16">
           <img
-            src="/figma/icons/logo.svg"
+            src="/figma/landing/brand-icon.svg"
             alt="DeepFlow"
-            width={45}
-            height={32}
-            className="h-8 w-auto"
+            width={40}
+            height={28}
+            className="h-5 w-auto md:h-7"
           />
-          <span className="font-[family-name:var(--font-display)] text-xl font-bold tracking-tight text-white md:text-2xl">
-            DEEPFLOW
-          </span>
         </div>
         <div className="flex items-center gap-2.5">
-          <LandingSocialLinks />
-          <LaunchAppLink variant="button" className="hidden h-8 px-8 py-0 sm:inline-flex" showArrow={false} />
+          <LandingSocialLinks variant="header" />
+          <LaunchAppLink
+            variant="button"
+            showArrow={false}
+            className={cn(
+              LANDING_LAUNCH_PILL_CLASS,
+              "hidden h-12 w-44 text-base sm:inline-flex md:h-16 md:w-60 md:text-xl",
+            )}
+          />
         </div>
       </div>
     </header>

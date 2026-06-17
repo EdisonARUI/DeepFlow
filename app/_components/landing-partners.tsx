@@ -1,50 +1,116 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const PARTNERS = [
   {
-    name: "Sui Foundation",
-    icon: "/figma/landing/partner-sui.png",
-    iconClass: "h-8 w-[25px]",
+    name: "NAVI",
+    icon: "/figma/landing/partner-navi-circle.png",
+    iconClass: "size-[90px]",
   },
   {
     name: "DeepBook",
-    icon: "/figma/landing/partner-deepbook.png",
-    iconClass: "size-8",
+    icon: "/figma/landing/partner-deepbook-circle.png",
+    iconClass: "size-[90px]",
+  },
+  {
+    name: "Sui Foundation",
+    icon: "/figma/landing/partner-sui-circle.png",
+    iconClass: "h-[90px] w-[72px]",
   },
   {
     name: "Suilend",
-    icon: "/figma/landing/partner-suilend.png",
-    iconClass: "size-8",
-  },
-  {
-    name: "NAVI",
-    icon: "/figma/landing/partner-navi.png",
-    iconClass: "h-8 w-[33px]",
+    icon: "/figma/landing/partner-suilend-circle.png",
+    iconClass: "size-[90px]",
   },
 ] as const;
 
-const MARQUEE_PARTNERS = [...PARTNERS, ...PARTNERS];
+type Partner = (typeof PARTNERS)[number];
 
-function PartnerCard({
+const CARD_WIDTH = 240;
+const GAP = 15;
+const ITEM_STRIDE = CARD_WIDTH + GAP;
+
+function computePartnerCopies(viewportWidth: number) {
+  const minItems =
+    Math.ceil(viewportWidth / ITEM_STRIDE) + PARTNERS.length;
+  const copies = Math.ceil(minItems / PARTNERS.length);
+  return Math.max(2, copies);
+}
+
+function buildMarqueePartners(copies: number) {
+  const basePartners = Array.from({ length: copies }, () => PARTNERS).flat();
+  return {
+    basePartners,
+    marqueePartners: [...basePartners, ...basePartners],
+  };
+}
+
+function PartnerLogoCard({
   partner,
+  decorative = false,
 }: {
-  partner: (typeof PARTNERS)[number];
+  partner: Partner;
+  decorative?: boolean;
 }) {
   return (
-    <div className="flex h-[90px] w-[280px] shrink-0 items-center justify-center gap-2.5 rounded border border-[#363a3b] bg-[#191c1e] px-4">
-      <img src={partner.icon} alt="" className={partner.iconClass} />
-      <span className="font-[family-name:var(--font-display)] text-xl font-bold text-white md:text-2xl">
-        {partner.name}
-      </span>
+    <div className="flex size-[240px] shrink-0 items-center justify-center overflow-hidden rounded-[20px] bg-white">
+      <img
+        src={partner.icon}
+        alt={decorative ? "" : partner.name}
+        aria-hidden={decorative}
+        className={partner.iconClass}
+      />
+    </div>
+  );
+}
+
+function PartnerMarqueeRow({
+  direction,
+  reduceMotion,
+  marqueePartners,
+  baseLength,
+  className,
+}: {
+  direction: "left" | "right";
+  reduceMotion: boolean;
+  marqueePartners: Partner[];
+  baseLength: number;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "w-full",
+        reduceMotion ? "overflow-x-auto" : "overflow-hidden",
+        className,
+      )}
+    >
+      <div
+        className={cn(
+          "flex w-max gap-[15px]",
+          !reduceMotion &&
+            (direction === "left"
+              ? "animate-landing-partners-marquee"
+              : "animate-landing-partners-marquee-reverse"),
+        )}
+      >
+        {marqueePartners.map((partner, index) => (
+          <PartnerLogoCard
+            key={`${partner.name}-${direction}-${index}`}
+            partner={partner}
+            decorative={index >= baseLength}
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
 export function LandingPartners() {
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [copies, setCopies] = useState(2);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -54,32 +120,40 @@ export function LandingPartners() {
     return () => media.removeEventListener("change", updateMotion);
   }, []);
 
+  useEffect(() => {
+    const updateCopies = () => setCopies(computePartnerCopies(window.innerWidth));
+    updateCopies();
+    window.addEventListener("resize", updateCopies);
+    return () => window.removeEventListener("resize", updateCopies);
+  }, []);
+
+  const { basePartners, marqueePartners } = useMemo(
+    () => buildMarqueePartners(copies),
+    [copies],
+  );
+
   return (
-    <section className="bg-[#101415] py-16 md:py-20">
-      <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-10 px-5 md:px-10">
-        <h2 className="text-center font-[family-name:var(--font-display)] text-3xl font-semibold tracking-[-0.8px] text-[#e0e3e5] md:text-[40px] md:leading-[48px]">
-          Our Partners
-        </h2>
-        <div
-          className={cn(
-            "w-full",
-            reduceMotion ? "overflow-x-auto" : "overflow-hidden",
-          )}
-        >
-          <div
-            className={cn(
-              "flex w-max gap-4",
-              !reduceMotion && "animate-landing-partners-marquee",
-            )}
-          >
-            {MARQUEE_PARTNERS.map((partner, index) => (
-              <PartnerCard
-                key={`${partner.name}-${index}`}
-                partner={partner}
-              />
-            ))}
-          </div>
-        </div>
+    <section
+      id="landing-partners"
+      className="bg-black px-5 pb-[10px] pt-5"
+    >
+      <h2 className="text-center font-[family-name:var(--font-display)] text-[40px] font-bold leading-[52px] text-white md:text-[64px]">
+        Our Partner
+      </h2>
+      <div className="mt-10 flex flex-col gap-[15px]">
+        <PartnerMarqueeRow
+          direction="left"
+          reduceMotion={reduceMotion}
+          marqueePartners={marqueePartners}
+          baseLength={basePartners.length}
+        />
+        <PartnerMarqueeRow
+          direction="right"
+          reduceMotion={reduceMotion}
+          marqueePartners={marqueePartners}
+          baseLength={basePartners.length}
+          className="md:pl-[67px]"
+        />
       </div>
     </section>
   );
