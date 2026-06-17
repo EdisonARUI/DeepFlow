@@ -47,7 +47,7 @@ export function useSupplyWithdrawSimulation(
 
       if (!account?.address) {
         setStatus("error");
-        setError("请先连接钱包");
+        setError("Please connect wallet first");
         return;
       }
 
@@ -62,7 +62,7 @@ export function useSupplyWithdrawSimulation(
 
       if (operation === "supply" && baseUnits > position.walletCoinBalance) {
         setStatus("error");
-        setError(`钱包 ${position.asset} 余额不足，请先转入`);
+        setError(`Insufficient ${position.asset} wallet balance. Please fund wallet first.`);
         return;
       }
 
@@ -72,7 +72,7 @@ export function useSupplyWithdrawSimulation(
       if (useWithdrawBootstrap && baseUnits > position.walletCoinBalance) {
         setStatus("error");
         setError(
-          `钱包 ${position.asset} 余额不足（含 gas 预留），无法 bootstrap supply→withdraw 模拟`,
+          `Insufficient ${position.asset} wallet balance (including gas reserve); cannot run bootstrap supply->withdraw simulation.`,
         );
         return;
       }
