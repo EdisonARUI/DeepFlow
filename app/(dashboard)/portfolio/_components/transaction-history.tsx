@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { PortfolioTransactionView } from "@/lib/data/portfolio/types";
+import { getTransactionExplorerUrl } from "@/lib/sui/explorer";
 import { DashboardPanel } from "@/components/dashboard-panel";
 
 const TIMEFRAMES = ["7_DAYS", "30_DAYS"] as const;
@@ -48,6 +49,17 @@ function TimeframeToggle({
       ))}
     </div>
   );
+}
+
+function openTransactionExplorer(txDigest: string) {
+  window.open(getTransactionExplorerUrl(txDigest), "_blank", "noopener,noreferrer");
+}
+
+function handleRowKeyDown(event: React.KeyboardEvent, txDigest: string) {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    openTransactionExplorer(txDigest);
+  }
 }
 
 export function TransactionHistory({
@@ -90,8 +102,12 @@ export function TransactionHistory({
           ) : (
             transactions.map((row) => (
               <TableRow
-                key={`${row.txHash}-${row.date}`}
-                className="border-border-muted/40 bg-[rgba(53,53,52,0.05)]"
+                key={`${row.txDigest}-${row.date}`}
+                role="link"
+                tabIndex={0}
+                onClick={() => openTransactionExplorer(row.txDigest)}
+                onKeyDown={(event) => handleRowKeyDown(event, row.txDigest)}
+                className="cursor-pointer border-border-muted/40 bg-[rgba(53,53,52,0.05)] hover:bg-[rgba(53,53,52,0.12)]"
               >
                 <TableCell className="p-4 text-[12px] text-text-primary/70">{row.date}</TableCell>
                 <TableCell className="p-4 text-[12px] font-bold text-text-primary uppercase">
@@ -125,7 +141,7 @@ export function TransactionHistory({
                     {row.status}
                   </StatusBadge>
                 </TableCell>
-                <TableCell className="p-4 text-right text-[12px] text-text-primary/50">
+                <TableCell className="p-4 text-right text-[12px] text-accent-cyan underline">
                   {row.txHash}
                 </TableCell>
               </TableRow>
