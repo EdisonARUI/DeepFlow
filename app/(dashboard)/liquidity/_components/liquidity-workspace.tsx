@@ -3,6 +3,7 @@
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLiquidityPositions } from "@/lib/data/liquidity/use-liquidity-positions";
+import { useDeepbookBalances } from "@/lib/data/deepbook/use-deepbook-balances";
 import { toLiquidityPositionDisplay } from "@/lib/data/liquidity/liquidity-formatters";
 import { DeFiConnectivity } from "./defi-connectivity";
 import { PositionManagement } from "./position-management";
@@ -35,11 +36,16 @@ export function LiquidityWorkspace() {
   const account = useCurrentAccount();
   const { positions, walletBalanceWarning, configurationWarning, isLoading, error, refetch } =
     useLiquidityPositions();
+  const {
+    balanceByAsset,
+    managerId: deepbookManagerId,
+    isLoading: isDeepbookLoading,
+  } = useDeepbookBalances();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const displayPositions = useMemo(
-    () => positions.map(toLiquidityPositionDisplay),
-    [positions],
+    () => positions.map((position) => toLiquidityPositionDisplay(position, balanceByAsset)),
+    [positions, balanceByAsset],
   );
 
   useEffect(() => {
@@ -59,7 +65,7 @@ export function LiquidityWorkspace() {
   const selectedPosition =
     displayPositions.find((position) => position.id === selectedId) ?? displayPositions[0];
 
-  if (isLoading) {
+  if (isLoading || isDeepbookLoading) {
     return <LiquidityWorkspaceSkeleton />;
   }
 
@@ -113,6 +119,7 @@ export function LiquidityWorkspace() {
             selectedPosition={selectedPosition}
             onAssetChange={setSelectedId}
             onPositionsRefetch={(options) => void refetch(options)}
+            deepbookManagerId={deepbookManagerId}
           />
         </div>
       </div>

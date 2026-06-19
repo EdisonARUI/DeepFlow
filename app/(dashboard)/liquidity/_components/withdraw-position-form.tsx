@@ -3,7 +3,9 @@
 import { useMemo } from "react";
 import {
   formatAmountFromPercentage,
+  getUniqueProtocolOptions,
   percentageFromAmount,
+  resolvePositionIdForSelection,
   type LiquidityPositionDisplay,
 } from "@/lib/data/liquidity/liquidity-formatters";
 import type { SimulationStatus } from "@/lib/data/liquidity/use-supply-withdraw-simulation";
@@ -48,6 +50,20 @@ export function WithdrawPositionForm({
     [positions, selectedPosition.protocol],
   );
 
+  const protocolOptions = useMemo(
+    () => getUniqueProtocolOptions(positions),
+    [positions],
+  );
+
+  const handleProtocolChange = (protocol: string) => {
+    const nextId = resolvePositionIdForSelection(
+      positions,
+      protocol,
+      selectedPosition.asset,
+    );
+    if (nextId) onAssetChange(nextId);
+  };
+
   const statusVariant =
     simulationStatus === "success" || simulationStatus === "executed"
       ? "success"
@@ -77,6 +93,8 @@ export function WithdrawPositionForm({
           mode="withdraw"
           protocol={selectedPosition.protocol}
           protocolColor={selectedPosition.protocolColor}
+          protocols={protocolOptions}
+          onProtocolChange={handleProtocolChange}
         />
         <PositionAmountInput
           balanceLabel="Pool Balance"

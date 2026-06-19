@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { DashboardPanel } from "@/components/dashboard-panel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { LiquidityPositionDisplay } from "@/lib/data/liquidity/liquidity-formatters";
+import type { SupplyFundSource } from "@/lib/data/liquidity/types";
 import { useSupplyWithdrawSimulation } from "@/lib/data/liquidity/use-supply-withdraw-simulation";
 import { getTransactionExplorerUrl } from "@/lib/sui/explorer";
 import { SupplyPositionForm } from "./supply-position-form";
@@ -14,6 +15,7 @@ type PositionManagementProps = {
   selectedPosition: LiquidityPositionDisplay;
   onAssetChange: (id: string) => void;
   onPositionsRefetch?: (options?: { bustCache?: boolean }) => void;
+  deepbookManagerId?: string;
 };
 
 const TAB_TRIGGER_CLASS =
@@ -29,9 +31,11 @@ export function PositionManagement({
   selectedPosition,
   onAssetChange,
   onPositionsRefetch,
+  deepbookManagerId,
 }: PositionManagementProps) {
   const [supplyAmount, setSupplyAmount] = useState("");
   const [supplySlider, setSupplySlider] = useState([0]);
+  const [supplySource, setSupplySource] = useState<SupplyFundSource>("wallet");
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawSlider, setWithdrawSlider] = useState([0]);
 
@@ -46,6 +50,7 @@ export function PositionManagement({
     supplySimulation.reset();
     setSupplyAmount("");
     setSupplySlider([0]);
+    setSupplySource("wallet");
   }, [selectedPosition.id, supplySimulation.reset]);
 
   useEffect(() => {
@@ -127,6 +132,8 @@ export function PositionManagement({
             positions={positions}
             selectedPosition={selectedPosition}
             onAssetChange={onAssetChange}
+            supplySource={supplySource}
+            onSupplySourceChange={setSupplySource}
             amount={supplyAmount}
             onAmountChange={setSupplyAmount}
             slider={supplySlider}
@@ -135,6 +142,8 @@ export function PositionManagement({
               void supplySimulation.simulate({
                 position: selectedPosition,
                 amount: supplyAmount,
+                fundSource: supplySource,
+                managerId: deepbookManagerId,
               })
             }
             isSimulating={supplySimulation.isSimulating}
