@@ -283,6 +283,43 @@ export function buildPipelineStepsFromPtb(
   });
 }
 
+export function buildLimitOrderSuccessPipelineSteps(
+  depositAsset: string,
+  side: "BUY" | "SELL",
+): PipelineStep[] {
+  return [
+    {
+      id: "step-0",
+      label: "WITHDRAW",
+      status: "done",
+      description: `Withdraw ${depositAsset}`,
+    },
+    {
+      id: "step-1",
+      label: "DEEPBOOK_DEPOSIT",
+      status: "done",
+      description: "Deposit to DeepBook BalanceManager",
+    },
+    {
+      id: "step-2",
+      label: "PLACE_LIMIT",
+      status: "done",
+      description: `Place ${side} limit order`,
+    },
+  ];
+}
+
+export function buildCancelOrderSuccessPipelineSteps(): PipelineStep[] {
+  return [
+    {
+      id: "step-0",
+      label: "CANCEL_ORDER",
+      status: "done",
+      description: "Cancel DeepBook limit order",
+    },
+  ];
+}
+
 export function deepbookQuoteFromHuman(params: {
   estimatedOutput: number;
   minOutput: number;
