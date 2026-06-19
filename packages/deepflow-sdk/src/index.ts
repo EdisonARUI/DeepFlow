@@ -13,6 +13,10 @@ export type {
   SimulateTxParams,
 } from "./simulation/simulate-transaction.ts";
 export { parseAmountToBaseUnits } from "./amount/parse-base-units.ts";
+export { computeBaseQuantityFromQuotePay } from "./amount/compute-base-quantity-from-quote-pay.ts";
+export { alignHumanBaseAmountToLot } from "./amount/align-human-base-amount-to-lot.ts";
+export { formatBaseUnitsToHuman } from "./amount/format-base-units-to-human.ts";
+export { truncateHumanAmountDecimals } from "./amount/truncate-human-amount-decimals.ts";
 export {
   buildIdlePipelineSteps,
   buildPipelineStepsFromPtb,
@@ -28,8 +32,11 @@ export type {
   SimulateTradeParams,
   SimulateTradeResult,
 } from "./trade.ts";
-export { inspectSupplyWithdraw, simulateSupplyWithdraw } from "./supply-withdraw.ts";
+export { inspectSupplyWithdraw, simulateDeepbookSupply, simulateSupplyWithdraw } from "./supply-withdraw.ts";
 export type {
+  DeepbookSupplyParams,
+  DeepbookSupplySimulationResult,
+  SupplyFundSource,
   SupplyWithdrawOperation,
   SupplyWithdrawParams,
   SupplyWithdrawSimulationResult,

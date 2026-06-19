@@ -6,6 +6,11 @@ import { buildNaviWithdrawTx } from "./credit-source/navi/build-navi-withdraw-tx
 import { buildSuilendSupplyThenWithdrawTx } from "./credit-source/suilend/build-suilend-supply-then-withdraw-tx.ts";
 import { buildSuilendSupplyTx } from "./credit-source/suilend/build-suilend-supply-tx.ts";
 import { buildSuilendWithdrawTx } from "./credit-source/suilend/build-suilend-withdraw-tx.ts";
+import { simulateDeepbookSupply } from "./supply-withdraw/simulate-deepbook-supply.ts";
+import type {
+  DeepbookSupplyParams,
+  DeepbookSupplySimulationResult,
+} from "./supply-withdraw/simulate-deepbook-supply.ts";
 import {
   devInspectTransaction,
   dryRunTransaction,
@@ -15,6 +20,7 @@ import { createSuiGrpcClient, createSuiJsonRpcClient } from "./sui/client.ts";
 
 export type SupplyWithdrawProtocol = "navi" | "suilend";
 export type SupplyWithdrawOperation = "supply" | "withdraw";
+export type SupplyFundSource = "wallet" | "deepbook";
 
 export interface SupplyWithdrawParams {
   protocol?: SupplyWithdrawProtocol;
@@ -136,3 +142,6 @@ export async function inspectSupplyThenWithdraw(
 
   return { ...result, transaction };
 }
+
+export { simulateDeepbookSupply };
+export type { DeepbookSupplyParams, DeepbookSupplySimulationResult };

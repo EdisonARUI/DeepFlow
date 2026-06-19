@@ -96,3 +96,66 @@ export type {
   TradeWalletNaviParams,
   TradeWalletNaviSimulationResult,
 } from "./trade/simulate-trade-wallet-navi.ts";
+export {
+  buildWalletLimitOrderTx,
+  resolveLimitOrderAssets,
+} from "./trade/build-limit-order-core.ts";
+export { buildNaviLimitOrderTx } from "./trade/build-navi-limit-order-tx.ts";
+export { buildSuilendLimitOrderTx } from "./trade/build-suilend-limit-order-tx.ts";
+export {
+  buildCancelDeepbookOrderTx,
+  buildCancelAllDeepbookOrdersTx,
+} from "./trade/build-cancel-deepbook-order-tx.ts";
+export {
+  simulateLimitOrder,
+  inspectLimitOrder,
+} from "./trade/simulate-limit-order.ts";
+export {
+  simulateCancelDeepbookOrder,
+  simulateCancelAllDeepbookOrders,
+  inspectCancelDeepbookOrder,
+  inspectCancelAllDeepbookOrders,
+} from "./trade/simulate-cancel-deepbook-order.ts";
+export {
+  resolveUserBalanceManager,
+  DEFAULT_BALANCE_MANAGER_KEY,
+  balanceManagerConfigEntry,
+} from "./trade/resolve-user-balance-manager.ts";
+export {
+  resolveLimitOrderDeposit,
+  resolveLimitOrderDepositAmount,
+  resolveLimitOrderDepositWithFee,
+  deepBookMul,
+  fetchPoolMakerFeeRaw,
+  validateLimitOrderParams,
+  type LimitOrderSide,
+} from "./trade/resolve-deepbook-limit-order.ts";
+export { resolveTickAlignedLimitPrice } from "./trade/resolve-limit-order-price.ts";
+export {
+  resolveLimitOrderQuantityBounds,
+  validateLimitOrderQuantity,
+  type LimitOrderQuantityBounds,
+} from "./trade/validate-limit-order-quantity.ts";
+export { alignBaseUnitsToLot } from "./trade/align-base-units-to-lot.ts";
+export { formatLimitOrderMinLabel } from "./trade/format-limit-order-min-label.ts";
+export {
+  LIMIT_EXPIRE_PRESET_LABELS,
+  resolveExpireTimestampMs,
+  type LimitExpirePreset,
+} from "./trade/resolve-limit-expire.ts";
+export {
+  buildLimitOrderSuccessPipelineSteps,
+  buildCancelOrderSuccessPipelineSteps,
+} from "./trade/map-pipeline-steps.ts";
+export type { TradeLimitOrderParams } from "./trade/build-limit-order-core.ts";
+export type {
+  LimitOrderFundSource,
+  LimitOrderSimulationParams,
+  LimitOrderSimulationResult,
+} from "./trade/simulate-limit-order.ts";
+export type {
+  BuildCancelDeepbookOrderTxParams,
+  BuildCancelAllDeepbookOrdersTxParams,
+} from "./trade/build-cancel-deepbook-order-tx.ts";
+export type { BuildNaviLimitOrderTxParams } from "./trade/build-navi-limit-order-tx.ts";
+export type { BuildSuilendLimitOrderTxParams } from "./trade/build-suilend-limit-order-tx.ts";
