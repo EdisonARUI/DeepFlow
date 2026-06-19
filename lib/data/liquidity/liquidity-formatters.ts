@@ -62,11 +62,62 @@ export type LiquidityPositionDisplay = LiquidityPositionView & {
   apr: string;
   suppliedBalanceDisplay: string;
   walletCoinBalanceDisplay: string;
+  deepbookCoinBalance: bigint;
+  deepbookCoinBalanceDisplay: string;
 };
+
+export type LiquidityProtocolOption = {
+  protocol: string;
+  protocolColor: string;
+};
+
+export function getUniqueProtocolOptions(
+  positions: LiquidityPositionDisplay[],
+): LiquidityProtocolOption[] {
+  const seen = new Set<string>();
+  const options: LiquidityProtocolOption[] = [];
+
+  for (const position of positions) {
+    if (seen.has(position.protocol)) {
+      continue;
+    }
+    seen.add(position.protocol);
+    options.push({
+      protocol: position.protocol,
+      protocolColor: position.protocolColor,
+    });
+  }
+
+  return options;
+}
+
+export function resolvePositionIdForSelection(
+  positions: LiquidityPositionDisplay[],
+  protocol: string,
+  preferredAsset?: string,
+): string | undefined {
+  const protocolPositions = positions.filter((position) => position.protocol === protocol);
+  if (protocolPositions.length === 0) {
+    return undefined;
+  }
+
+  if (preferredAsset) {
+    const preferred = protocolPositions.find((position) => position.asset === preferredAsset);
+    if (preferred) {
+      return preferred.id;
+    }
+  }
+
+  return protocolPositions[0]?.id;
+}
 
 export function toLiquidityPositionDisplay(
   position: LiquidityPositionView,
+  deepbookBalanceByAsset: Record<string, bigint> = {},
 ): LiquidityPositionDisplay {
+  const assetKey = position.asset.toUpperCase();
+  const deepbookCoinBalance = deepbookBalanceByAsset[assetKey] ?? 0n;
+
   return {
     ...position,
     totalSupply: formatLiquidityTotalSupply(position.tvlUsd),
@@ -77,6 +128,11 @@ export function toLiquidityPositionDisplay(
     ),
     walletCoinBalanceDisplay: formatLiquidityBalance(
       position.walletCoinBalance,
+      position.decimals,
+    ),
+    deepbookCoinBalance,
+    deepbookCoinBalanceDisplay: formatLiquidityBalance(
+      deepbookCoinBalance,
       position.decimals,
     ),
   };

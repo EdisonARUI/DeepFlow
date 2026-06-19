@@ -4,8 +4,10 @@ import { useCallback, useState } from "react";
 import { useCurrentAccount, useDAppKit } from "@mysten/dapp-kit-react";
 import { parseAmountToBaseUnits } from "@deepflow/sdk/amount/parse-base-units";
 import {
+  simulateDeepbookSupply,
   simulateSupplyThenWithdraw,
   simulateSupplyWithdraw,
+  type SupplyFundSource,
   type SupplyWithdrawOperation,
 } from "@deepflow/sdk/supply-withdraw";
 import type { LiquidityPositionDisplay } from "./liquidity-formatters";
@@ -22,6 +24,13 @@ export type SimulationStatus =
 
 type UseSupplyWithdrawSimulationOptions = {
   onExecuted?: () => void;
+};
+
+type SimulateParams = {
+  position: LiquidityPositionDisplay;
+  amount: string;
+  fundSource?: SupplyFundSource;
+  managerId?: string;
 };
 
 export function useSupplyWithdrawSimulation(
@@ -42,8 +51,8 @@ export function useSupplyWithdrawSimulation(
   }, []);
 
   const simulate = useCallback(
-    async (params: { position: LiquidityPositionDisplay; amount: string }) => {
-      const { position, amount } = params;
+    async (params: SimulateParams) => {
+      const { position, amount, fundSource = "wallet", managerId } = params;
 
       if (!account?.address) {
         setStatus("error");
@@ -60,10 +69,23 @@ export function useSupplyWithdrawSimulation(
         return;
       }
 
-      if (operation === "supply" && baseUnits > position.walletCoinBalance) {
+      if (operation === "supply" && fundSource === "wallet" && baseUnits > position.walletCoinBalance) {
         setStatus("error");
         setError(`Insufficient ${position.asset} wallet balance. Please fund wallet first.`);
         return;
+      }
+
+      if (operation === "supply" && fundSource === "deepbook") {
+        if (!managerId) {
+          setStatus("error");
+          setError("No DeepBook BalanceManager yet. Place a limit order first.");
+          return;
+        }
+        if (baseUnits > position.deepbookCoinBalance) {
+          setStatus("error");
+          setError(`Insufficient ${position.asset} DeepBook balance.`);
+          return;
+        }
       }
 
       const useWithdrawBootstrap =
@@ -84,26 +106,40 @@ export function useSupplyWithdrawSimulation(
       setTxDigest(undefined);
 
       try {
-        const asset = position.coinType || position.asset;
+        const asset =
+          operation === "supply" && fundSource === "deepbook"
+            ? position.asset
+            : position.coinType || position.asset;
         const protocol =
           position.protocolId === "suilend" ? ("suilend" as const) : ("navi" as const);
-        const result = useWithdrawBootstrap
-          ? await simulateSupplyThenWithdraw({
-              protocol,
-              sender: account.address,
-              asset,
-              assetSymbol: position.asset,
-              supplyAmount: baseUnits,
-              withdrawAmount: baseUnits,
-            })
-          : await simulateSupplyWithdraw({
-              protocol,
-              sender: account.address,
-              asset,
-              assetSymbol: position.asset,
-              amount: baseUnits,
-              operation,
-            });
+
+        const result =
+          operation === "supply" && fundSource === "deepbook"
+            ? await simulateDeepbookSupply({
+                protocol,
+                sender: account.address,
+                asset,
+                assetSymbol: position.asset,
+                amount: baseUnits,
+                managerId: managerId!,
+              })
+            : useWithdrawBootstrap
+              ? await simulateSupplyThenWithdraw({
+                  protocol,
+                  sender: account.address,
+                  asset,
+                  assetSymbol: position.asset,
+                  supplyAmount: baseUnits,
+                  withdrawAmount: baseUnits,
+                })
+              : await simulateSupplyWithdraw({
+                  protocol,
+                  sender: account.address,
+                  asset,
+                  assetSymbol: position.asset,
+                  amount: baseUnits,
+                  operation,
+                });
 
         if (!result.ok) {
           setStatus("error");

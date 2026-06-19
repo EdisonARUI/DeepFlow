@@ -27,6 +27,8 @@ export type LiquidityPositionView = {
   decimals: number;
 };
 
+export type SupplyFundSource = "wallet" | "deepbook";
+
 export function getLiquidityPositionId(protocolLabel: string, asset: string): string {
   return `${protocolLabel}-${asset}`;
 }

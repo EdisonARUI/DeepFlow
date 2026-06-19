@@ -1,9 +1,5 @@
 import type { LiquidityRepository } from "./liquidity-repository";
-import { MockLiquidityRepository } from "./mock-liquidity-repository";
-import { LiquidityAggregatorRepository } from "./protocols/liquidity-aggregator-repository";
 import type { LiquidityProtocolAdapter } from "./protocols/types";
-import { NaviLiquidityAdapter } from "./protocols/navi/navi-liquidity-adapter";
-import { SuilendLiquidityAdapter } from "./protocols/suilend/suilend-liquidity-adapter";
 
 export type LiquidityDataSource = "mock" | "live";
 
@@ -12,7 +8,7 @@ function resolveDataSource(): LiquidityDataSource {
   return source === "live" ? "live" : "mock";
 }
 
-export function createLiquidityRepository(): LiquidityRepository {
+export async function createLiquidityRepository(): Promise<LiquidityRepository> {
   const source = resolveDataSource();
 
   if (source === "live") {
@@ -22,19 +18,26 @@ export function createLiquidityRepository(): LiquidityRepository {
       .map((s) => s.trim())
       .filter(Boolean) as LiquidityProtocolAdapter["protocolId"][];
 
-    const adapters = enabledProtocolIds.flatMap((id): LiquidityProtocolAdapter[] => {
-      switch (id) {
-        case "navi":
-          return [new NaviLiquidityAdapter()];
-        case "suilend":
-          return [new SuilendLiquidityAdapter()];
-        // Future protocols:
-        // case "scallop": return [new ScallopLiquidityAdapter()]
-        // case "cetus": return [new CetusLiquidityAdapter()]
-        default:
-          return [];
-      }
-    });
+    const adapterModules = await Promise.all(
+      enabledProtocolIds.map(async (id) => {
+        switch (id) {
+          case "navi": {
+            const { NaviLiquidityAdapter } = await import("./protocols/navi/navi-liquidity-adapter");
+            return new NaviLiquidityAdapter();
+          }
+          case "suilend": {
+            const { SuilendLiquidityAdapter } = await import(
+              "./protocols/suilend/suilend-liquidity-adapter"
+            );
+            return new SuilendLiquidityAdapter();
+          }
+          default:
+            return null;
+        }
+      }),
+    );
+
+    const adapters = adapterModules.filter((adapter) => adapter !== null);
 
     if (adapters.length === 0) {
       throw new Error(
@@ -42,8 +45,12 @@ export function createLiquidityRepository(): LiquidityRepository {
       );
     }
 
+    const { LiquidityAggregatorRepository } = await import(
+      "./protocols/liquidity-aggregator-repository"
+    );
     return new LiquidityAggregatorRepository(adapters);
   }
 
+  const { MockLiquidityRepository } = await import("./mock-liquidity-repository");
   return new MockLiquidityRepository();
 }
