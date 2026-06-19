@@ -29,6 +29,7 @@ export function TopBar() {
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={false}
                 className={cn(
                   "flex h-8 w-[120px] items-center justify-center rounded-[50px] text-base font-bold tracking-[0.6px] uppercase",
                   active
