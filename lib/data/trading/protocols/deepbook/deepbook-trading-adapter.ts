@@ -1,27 +1,42 @@
 import { mainnetCoins, mainnetPools } from "@mysten/deepbook-v3";
 import {
+  balanceManagerConfigEntry,
+  deepBookMul,
+  DEFAULT_BALANCE_MANAGER_KEY,
+  fetchPoolMakerFeeRaw,
+  formatLimitOrderMinLabel,
+  resolveLimitOrderDepositWithFee,
+  resolveLimitOrderQuantityBounds,
+  resolveTickAlignedLimitPrice,
+  resolveUserBalanceManager,
+} from "@deepflow/sdk/trade";
+import {
   fetchDeepbookMidPrice,
   fetchDeepbookMidPrices,
   resolveFeaturedPoolKeys,
 } from "@/lib/data/pricing/deepbook-mid-price-service";
 import { createDeepbookClient } from "@/lib/sui/deepbook-client";
-import {
-  mapToDeepbookOrderViews,
-  mapToTradingMarketViews,
-} from "../../map-to-trading-view";
-import type { DeepbookOrderRaw, TradingMarketRaw } from "../../types";
+import { mapToOpenLimitOrderViews } from "../../map-open-limit-orders";
+import { mapToOrderHistoryViews } from "../../map-to-order-history-view";
+import { mapToTradingMarketViews } from "../../map-to-trading-view";
 import type {
+  LimitOrderQuoteView,
+  TradeOrderHistoryRaw,
+  TradingMarketRaw,
+} from "../../types";
+import type {
+  GetLimitOrderQuoteParams,
   GetMarketQuoteParams,
   ListMarketsResult,
+  ListOpenOrdersParams,
+  ListOpenOrdersResult,
+  ListOrderHistoryParams,
+  ListOrderHistoryResult,
   ListUserOrdersParams,
   ListUserOrdersResult,
 } from "../../trading-repository";
 import type { TradeQuoteView } from "../../types";
-import {
-  enrichSwapsWithIndexerTrades,
-  fetchIndexerTrades,
-  type IndexerTrade,
-} from "./deepbook-indexer-client";
+import { parseDeepbookLimitOrderTxs } from "./parse-deepbook-limit-order-txs";
 import { parseDeepbookSwapTxs } from "./parse-deepbook-swap-txs";
 
 function formatSwapFeeLabel(
@@ -34,42 +49,6 @@ function formatSwapFeeLabel(
   const scalar = mainnetCoins.DEEP?.scalar ?? 1e6;
   const human = deepRequired / scalar;
   return `~${human.toFixed(4)} DEEP`;
-}
-
-async function enrichSwapsFromIndexer(
-  swaps: DeepbookOrderRaw[],
-): Promise<DeepbookOrderRaw[]> {
-  if (swaps.length === 0) return swaps;
-
-  const poolKeys = [...new Set(swaps.map((swap) => swap.poolKey))];
-  const tradesByDigest = new Map<string, IndexerTrade[]>();
-
-  const minPlacedAtMs = Math.min(...swaps.map((swap) => swap.placedAtMs));
-  const maxPlacedAtMs = Math.max(...swaps.map((swap) => swap.placedAtMs));
-  const startTime = Math.floor(minPlacedAtMs / 1000) - 60;
-  const endTime = Math.floor(maxPlacedAtMs / 1000) + 60;
-
-  await Promise.all(
-    poolKeys.map(async (poolKey) => {
-      try {
-        const trades = await fetchIndexerTrades({
-          poolName: poolKey,
-          limit: 100,
-          startTime,
-          endTime,
-        });
-        for (const trade of trades) {
-          const existing = tradesByDigest.get(trade.digest) ?? [];
-          existing.push(trade);
-          tradesByDigest.set(trade.digest, existing);
-        }
-      } catch {
-        // Indexer 富化失败时降级为 RPC 解析结果
-      }
-    }),
-  );
-
-  return enrichSwapsWithIndexerTrades(swaps, tradesByDigest);
 }
 
 export class DeepbookTradingAdapter {
@@ -144,32 +123,203 @@ export class DeepbookTradingAdapter {
   }
 
   async listUserOrders(params: ListUserOrdersParams): Promise<ListUserOrdersResult> {
+    const result = await this.listOrderHistory(params);
+    return {
+      orders: result.orders.map((order) => ({
+        id: order.id,
+        side: order.side,
+        pair: order.pair,
+        amount: order.amount,
+        status: order.status,
+      })),
+      emptyMessage: result.emptyMessage,
+    };
+  }
+
+  async listOrderHistory(params: ListOrderHistoryParams): Promise<ListOrderHistoryResult> {
     const { owner, poolKey, limit = 20 } = params;
 
     if (!owner) {
       return {
         orders: [],
-        emptyMessage: "Connect wallet to view DeepBook swap history",
+        emptyMessage: "Connect wallet to view order history",
       };
     }
 
     try {
-      const rpcSwaps = await parseDeepbookSwapTxs({
-        owner,
-        poolKey,
-        limit,
-      });
-      const enrichedSwaps = await enrichSwapsFromIndexer(rpcSwaps);
+      const [swapOrders, limitOrders] = await Promise.all([
+        parseDeepbookSwapTxs({ owner, poolKey, limit }),
+        parseDeepbookLimitOrderTxs({ owner, poolKey, limit }),
+      ]);
+
+      const merged: TradeOrderHistoryRaw[] = [
+        ...swapOrders.map((order) => ({ ...order, kind: "swap" as const })),
+        ...limitOrders,
+      ];
+
+      merged.sort((a, b) => b.placedAtMs - a.placedAtMs);
+
+      const views = mapToOrderHistoryViews(merged.slice(0, limit));
 
       return {
-        orders: mapToDeepbookOrderViews(enrichedSwaps),
-        emptyMessage:
-          enrichedSwaps.length === 0 ? "No DeepBook swaps yet" : undefined,
+        orders: views,
+        emptyMessage: views.length === 0 ? "No DeepBook orders yet" : undefined,
       };
     } catch {
       return {
         orders: [],
-        emptyMessage: "Failed to load DeepBook swap history. Please try again.",
+        emptyMessage: "Failed to load order history. Please try again.",
+      };
+    }
+  }
+
+  async getLimitOrderQuote(params: GetLimitOrderQuoteParams): Promise<LimitOrderQuoteView> {
+    const { poolKey, side, price, quantityHuman } = params;
+    const pool = mainnetPools[poolKey as keyof typeof mainnetPools];
+    if (!pool) {
+      throw new Error(`Unknown pool ${poolKey}`);
+    }
+
+    const depositAsset = side === "SELL" ? pool.baseCoin : pool.quoteCoin;
+    const baseCoin = mainnetCoins[pool.baseCoin as keyof typeof mainnetCoins];
+    const quoteCoin = mainnetCoins[pool.quoteCoin as keyof typeof mainnetCoins];
+
+    let minOrderLabel = "—";
+    let lotBaseUnits = 0n;
+    let minBaseUnits = 0n;
+    try {
+      const bounds = await resolveLimitOrderQuantityBounds(poolKey);
+      lotBaseUnits = bounds.lotBaseUnits;
+      minBaseUnits = bounds.minBaseUnits;
+      minOrderLabel = formatLimitOrderMinLabel({
+        bounds,
+        side,
+        price,
+        quoteAsset: pool.quoteCoin,
+      });
+    } catch {
+      // ignore bounds fetch failure
+    }
+
+    if (quantityHuman <= 0 || price <= 0 || !baseCoin || !quoteCoin) {
+      return {
+        makerFeeLabel: "—",
+        lockedQuoteEstimate:
+          side === "BUY"
+            ? `${(price * quantityHuman).toFixed(4)} ${pool.quoteCoin}`
+            : `${quantityHuman.toFixed(4)} ${pool.baseCoin}`,
+        depositAsset,
+        minOrderLabel,
+        lotBaseUnits,
+        minBaseUnits,
+      };
+    }
+
+    try {
+      const alignedPrice = await resolveTickAlignedLimitPrice(poolKey, price);
+      const quantityBaseUnits = BigInt(Math.round(quantityHuman * baseCoin.scalar));
+      const makerFeeRaw = await fetchPoolMakerFeeRaw(poolKey);
+      const resolved = resolveLimitOrderDepositWithFee({
+        poolKey,
+        side,
+        price: alignedPrice,
+        quantityBaseUnits,
+        makerFeeRaw,
+      });
+
+      const depositScalar =
+        side === "SELL" ? baseCoin.scalar : quoteCoin.scalar;
+      const depositHuman = Number(resolved.depositAmount) / depositScalar;
+      const principalHuman =
+        side === "SELL"
+          ? quantityHuman
+          : Number(deepBookMul(resolved.inputQuantity, resolved.inputPrice)) /
+            quoteCoin.scalar;
+      const feeHuman = Math.max(0, depositHuman - principalHuman);
+
+      return {
+        makerFeeLabel: `~${feeHuman.toFixed(4)} ${depositAsset} (maker input-fee)`,
+        lockedQuoteEstimate:
+          side === "BUY"
+            ? `${depositHuman.toFixed(4)} ${pool.quoteCoin} (incl. fee)`
+            : `${depositHuman.toFixed(4)} ${pool.baseCoin} (incl. fee)`,
+        depositAsset,
+        minOrderLabel,
+        lotBaseUnits,
+        minBaseUnits,
+      };
+    } catch {
+      return {
+        makerFeeLabel: "Fee deducted from input asset",
+        lockedQuoteEstimate:
+          side === "BUY"
+            ? `${(price * quantityHuman).toFixed(4)} ${pool.quoteCoin}`
+            : `${quantityHuman.toFixed(4)} ${pool.baseCoin}`,
+        depositAsset,
+        minOrderLabel,
+        lotBaseUnits,
+        minBaseUnits,
+      };
+    }
+  }
+
+  async listOpenOrders(params: ListOpenOrdersParams): Promise<ListOpenOrdersResult> {
+    const { owner, poolKey } = params;
+
+    if (!owner) {
+      return {
+        orders: [],
+        emptyMessage: "Connect wallet to view open limit orders",
+      };
+    }
+
+    try {
+      const { managerId } = await resolveUserBalanceManager(owner);
+      if (!managerId) {
+        return {
+          orders: [],
+          emptyMessage: "No DeepBook BalanceManager yet. Place a limit order first.",
+        };
+      }
+
+      const client = createDeepbookClient(owner, {
+        balanceManagers: balanceManagerConfigEntry(managerId),
+      });
+
+      const poolKeys = poolKey ? [poolKey] : resolveFeaturedPoolKeys();
+      const viewsByPool = await Promise.all(
+        poolKeys.map(async (key) => {
+          const openOrderIds = await client.deepbook.accountOpenOrders(
+            key,
+            DEFAULT_BALANCE_MANAGER_KEY,
+          );
+          if (openOrderIds.length === 0) return [];
+
+          const normalizedOrders = await Promise.all(
+            openOrderIds.map(async (orderId) => {
+              const order = await client.deepbook.getOrderNormalized(key, orderId);
+              return order;
+            }),
+          );
+
+          return mapToOpenLimitOrderViews(
+            key,
+            normalizedOrders.filter((order): order is NonNullable<typeof order> => order !== null),
+          );
+        }),
+      );
+
+      const orders = viewsByPool.flat();
+
+      return {
+        orders,
+        managerId,
+        emptyMessage: orders.length === 0 ? "No open limit orders" : undefined,
+      };
+    } catch {
+      return {
+        orders: [],
+        emptyMessage: "Failed to load open limit orders. Please try again.",
       };
     }
   }
