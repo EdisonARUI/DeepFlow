@@ -17,6 +17,8 @@ export type TradingMarketView = {
   rate: number;
 };
 
+export type TradeOrderKind = "swap" | "limit";
+
 export type DeepbookOrderRaw = {
   orderId: string;
   poolKey: string;
@@ -25,6 +27,12 @@ export type DeepbookOrderRaw = {
   filledQuantity: number;
   status: DeepbookOrderStatus;
   placedAtMs: number;
+  kind?: TradeOrderKind;
+  price?: number;
+};
+
+export type TradeOrderHistoryRaw = DeepbookOrderRaw & {
+  kind: TradeOrderKind;
 };
 
 export type DeepbookOrderView = {
@@ -33,6 +41,38 @@ export type DeepbookOrderView = {
   pair: string;
   amount: string;
   status: DeepbookOrderStatus;
+};
+
+export type OrderHistoryView = {
+  id: string;
+  kind: TradeOrderKind;
+  side: "BUY" | "SELL";
+  pair: string;
+  amount: string;
+  price?: string;
+  status: DeepbookOrderStatus;
+};
+
+export type OpenLimitOrderView = {
+  orderId: string;
+  clientOrderId: string;
+  poolKey: string;
+  side: "BUY" | "SELL";
+  pair: string;
+  price: string;
+  quantity: string;
+  filledQuantity: string;
+  status: "OPEN" | "PARTIAL";
+  expireAt?: string;
+};
+
+export type LimitOrderQuoteView = {
+  makerFeeLabel: string;
+  lockedQuoteEstimate: string;
+  depositAsset: string;
+  minOrderLabel: string;
+  lotBaseUnits: bigint;
+  minBaseUnits: bigint;
 };
 
 export type TradeQuoteView = {

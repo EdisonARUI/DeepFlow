@@ -74,7 +74,7 @@ type SimulationResult = {
 };
 
 type UseTradeSimulationOptions = {
-  onExecuted?: () => void;
+  onExecuted?: (digest: string) => void;
 };
 
 function humanAmountFromBaseUnits(baseUnits: bigint, decimals: number): number {
@@ -171,7 +171,7 @@ export function useTradeSimulation(options?: UseTradeSimulationOptions) {
         setStatus("executed");
         setTxDigest(execResult.Transaction.digest);
         setError(undefined);
-        options?.onExecuted?.();
+        options?.onExecuted?.(execResult.Transaction.digest);
         notifyLiquidityPositionsChanged();
       } catch (err) {
         setStatus("error");
