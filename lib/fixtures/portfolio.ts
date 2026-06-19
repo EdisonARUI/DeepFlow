@@ -53,6 +53,8 @@ export const MOCK_PORTFOLIO_TRANSACTIONS: PortfolioTransactionView[] = [
     amount: "+500 vSUI",
     status: "COMPLETED",
     txHash: "0x21...fe90",
+    txDigest:
+      "0x2100000000000000000000000000000000000000000000000000000000fe90",
   },
   {
     date: "2023-10-26 18:42",
@@ -62,6 +64,8 @@ export const MOCK_PORTFOLIO_TRANSACTIONS: PortfolioTransactionView[] = [
     amount: "+10,000 USDC",
     status: "PENDING",
     txHash: "0xbb...a012",
+    txDigest:
+      "0xbb0000000000000000000000000000000000000000000000000000000000a012",
   },
   {
     date: "2023-10-26 14:10",
@@ -71,6 +75,8 @@ export const MOCK_PORTFOLIO_TRANSACTIONS: PortfolioTransactionView[] = [
     amount: "-5,000 DEEP",
     status: "COMPLETED",
     txHash: "0x14...8db3",
+    txDigest:
+      "0x14000000000000000000000000000000000000000000000000000000008db3",
   },
   {
     date: "2023-10-25 22:18",
@@ -80,6 +86,8 @@ export const MOCK_PORTFOLIO_TRANSACTIONS: PortfolioTransactionView[] = [
     amount: "+25,000 USDC",
     status: "COMPLETED",
     txHash: "0x99...d21f",
+    txDigest:
+      "0x9900000000000000000000000000000000000000000000000000000000d21f",
   },
   {
     date: "2023-10-25 11:05",
@@ -89,5 +97,7 @@ export const MOCK_PORTFOLIO_TRANSACTIONS: PortfolioTransactionView[] = [
     amount: "-2,000 SUI",
     status: "COMPLETED",
     txHash: "0x7a...b45c",
+    txDigest:
+      "0x7a00000000000000000000000000000000000000000000000000000000b45c",
   },
 ];
