@@ -25,3 +25,52 @@ export function computeToAmount(
   if (quoteOutput != null && quoteOutput > 0) return quoteOutput;
   return isReversed ? fromAmount / market.rate : fromAmount * market.rate;
 }
+
+export function getLimitDisplayAssets(
+  market: TradingMarketView,
+  side: "BUY" | "SELL",
+) {
+  if (side === "SELL") {
+    return {
+      payAsset: market.baseAsset,
+      receiveAsset: market.quoteAsset,
+    };
+  }
+  return {
+    payAsset: market.quoteAsset,
+    receiveAsset: market.baseAsset,
+  };
+}
+
+export function computeLimitPayAmount(
+  side: "BUY" | "SELL",
+  baseQuantity: number,
+  limitPrice: number,
+) {
+  if (!Number.isFinite(baseQuantity) || baseQuantity <= 0) return 0;
+  if (!Number.isFinite(limitPrice) || limitPrice <= 0) return 0;
+  if (side === "SELL") return baseQuantity;
+  return baseQuantity * limitPrice;
+}
+
+export function computeLimitReceiveEst(
+  side: "BUY" | "SELL",
+  baseQuantity: number,
+  limitPrice: number,
+) {
+  if (!Number.isFinite(baseQuantity) || baseQuantity <= 0) return 0;
+  if (!Number.isFinite(limitPrice) || limitPrice <= 0) return 0;
+  if (side === "SELL") return baseQuantity * limitPrice;
+  return baseQuantity;
+}
+
+export function formatLimitRateLabel(
+  market: TradingMarketView,
+  limitPrice: string,
+) {
+  const price = parseFloat(limitPrice);
+  if (!Number.isFinite(price) || price <= 0) {
+    return `1 ${market.baseAsset} = — ${market.quoteAsset}`;
+  }
+  return `1 ${market.baseAsset} = ${price.toFixed(4)} ${market.quoteAsset}`;
+}

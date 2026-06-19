@@ -1,6 +1,6 @@
 "use client";
 
-import { AssetIcon } from "@/components/asset-icon";
+import { PairAssetIcon } from "@/components/pair-asset-icon";
 import { DashboardPanel } from "@/components/dashboard-panel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -47,7 +47,10 @@ export function MarketPairs({
                   <span className="pointer-events-none absolute inset-y-1 left-0 w-[3px] rounded-full bg-selection-highlight" />
                 )}
                 <div className="flex items-center gap-1">
-                  <AssetIcon asset={market.baseAsset} size="md" />
+                  <PairAssetIcon
+                    baseAsset={market.baseAsset}
+                    quoteAsset={market.quoteAsset}
+                  />
                   <span className={cn(isSelected ? "text-black" : "text-text-primary")}>
                     {market.pair}
                   </span>
