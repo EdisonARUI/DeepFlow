@@ -7,33 +7,47 @@ type SocialLink = {
   iconClassName?: string;
   footerIcon?: string;
   standalone?: boolean;
+  external?: boolean;
 };
 
 const SOCIAL_LINKS: SocialLink[] = [
   {
-    href: "#",
+    href: "https://discord.gg/4xkah86gSd",
     icon: "/figma/landing/social-discord.svg",
     label: "Discord",
     iconClassName: "h-auto w-6",
+    external: true,
   },
   {
-    href: "#",
+    href: "https://t.me/sui_deepflow",
     icon: "/figma/landing/social-telegram.svg",
     label: "Telegram",
+    external: true,
   },
   {
-    href: "#",
+    href: "https://x.com/DeepFlowonSui",
     icon: "/figma/landing/social-x.svg",
     label: "X",
+    external: true,
   },
   {
-    href: "#",
+    href: "https://mail.google.com/mail/?view=cm&fs=1&to=zrui0761@gmail.com",
     icon: "/figma/landing/social-mail.svg",
     footerIcon: "/figma/landing/social-mail-icon.svg",
     label: "Email",
     standalone: true,
+    external: true,
   },
 ];
+
+function socialLinkAnchorProps(link: SocialLink) {
+  return {
+    href: link.href,
+    ...(link.external
+      ? { target: "_blank" as const, rel: "noopener noreferrer" }
+      : {}),
+  };
+}
 
 type LandingSocialLinksProps = {
   variant?: "default" | "header" | "footer";
@@ -49,7 +63,7 @@ export function LandingSocialLinks({ variant = "default" }: LandingSocialLinksPr
         {SOCIAL_LINKS.map((link) => (
           <a
             key={link.label}
-            href={link.href}
+            {...socialLinkAnchorProps(link)}
             aria-label={link.label}
             className="flex size-[135px] shrink-0 items-center justify-center overflow-hidden rounded-[45px] bg-white transition-opacity hover:opacity-80 md:size-[173px]"
           >
@@ -82,7 +96,7 @@ export function LandingSocialLinks({ variant = "default" }: LandingSocialLinksPr
           return (
             <a
               key={link.label}
-              href={link.href}
+              {...socialLinkAnchorProps(link)}
               aria-label={link.label}
               className="size-10 shrink-0 transition-opacity hover:opacity-80 sm:size-12 md:size-16"
             >
@@ -101,7 +115,7 @@ export function LandingSocialLinks({ variant = "default" }: LandingSocialLinksPr
         return (
           <a
             key={link.label}
-            href={link.href}
+            {...socialLinkAnchorProps(link)}
             aria-label={link.label}
             className={cn(
               "flex shrink-0 items-center justify-center transition-opacity hover:opacity-80",

@@ -3,80 +3,87 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-const PREFETCH_KEY = "__deepflow_prefetched_dashboard_routes__";
-const DASHBOARD_ROUTES = ["/portfolio", "/liquidity", "/trading"] as const;
-let didPrefetchInSession = false;
+const PREFETCH_KEY = "__deepflow_prefetched_portfolio__";
+const PORTFOLIO_ROUTE = "/portfolio";
+const IDLE_ROUTES = ["/liquidity", "/trading"] as const;
+let portfolioWarmupDone = false;
 
 export function LandingPortfolioPrefetch() {
   const router = useRouter();
 
   useEffect(() => {
-    if (didPrefetchInSession) {
-      return;
-    }
+    const isDev = process.env.NODE_ENV === "development";
 
-    if (typeof window !== "undefined" && window.sessionStorage.getItem(PREFETCH_KEY) === "1") {
-      didPrefetchInSession = true;
+    if (!isDev && typeof window !== "undefined" && window.sessionStorage.getItem(PREFETCH_KEY) === "1") {
       return;
     }
 
     let cancelled = false;
-    const prefetch = () => {
-      if (cancelled) {
+    let warmupTimeoutId: number | null = null;
+
+    const warmupPortfolio = () => {
+      if (cancelled || portfolioWarmupDone) {
         return;
       }
 
-      for (const route of DASHBOARD_ROUTES) {
-        router.prefetch(route);
+      portfolioWarmupDone = true;
+
+      if (isDev) {
+        void fetch(PORTFOLIO_ROUTE, {
+          method: "GET",
+          cache: "no-store",
+          credentials: "same-origin",
+          keepalive: true,
+        }).catch(() => undefined);
+      } else {
+        router.prefetch(PORTFOLIO_ROUTE);
       }
 
-      if (process.env.NODE_ENV === "development") {
-        for (const route of DASHBOARD_ROUTES) {
-          void fetch(route, {
-            method: "GET",
-            cache: "no-store",
-            credentials: "same-origin",
-            keepalive: true,
-          }).catch(() => undefined);
-        }
-      }
-
-      didPrefetchInSession = true;
-      if (typeof window !== "undefined") {
+      if (!isDev && typeof window !== "undefined") {
         window.sessionStorage.setItem(PREFETCH_KEY, "1");
       }
     };
 
-    if (typeof document !== "undefined" && document.visibilityState === "visible") {
-      let timeoutId: number | null = null;
-      const rafId = window.requestAnimationFrame(() => {
-        timeoutId = window.setTimeout(prefetch, 250);
-      });
-
-      return () => {
-        cancelled = true;
-        window.cancelAnimationFrame(rafId);
-        if (timeoutId !== null) {
-          window.clearTimeout(timeoutId);
-        }
-      };
-    }
-
-    const onVisible = () => {
-      if (document.visibilityState !== "visible") {
+    const schedulePortfolioWarmup = () => {
+      if (cancelled) {
         return;
       }
-      prefetch();
-      document.removeEventListener("visibilitychange", onVisible);
+
+      warmupTimeoutId = window.setTimeout(warmupPortfolio, 1000);
     };
 
-    document.addEventListener("visibilitychange", onVisible);
-    const fallbackTimeoutId = window.setTimeout(prefetch, 500);
+    if (typeof window !== "undefined") {
+      if (document.readyState === "complete") {
+        schedulePortfolioWarmup();
+      } else {
+        window.addEventListener("load", schedulePortfolioWarmup, { once: true });
+      }
+    }
+
+    const warmupIdleRoutes = () => {
+      if (cancelled) {
+        return;
+      }
+
+      for (const route of IDLE_ROUTES) {
+        router.prefetch(route);
+      }
+    };
+
+    let idleTimeoutId: number | null = null;
+
+    if (typeof window !== "undefined") {
+      idleTimeoutId = window.setTimeout(warmupIdleRoutes, 3000);
+    }
 
     return () => {
       cancelled = true;
-      document.removeEventListener("visibilitychange", onVisible);
-      window.clearTimeout(fallbackTimeoutId);
+      if (warmupTimeoutId !== null) {
+        window.clearTimeout(warmupTimeoutId);
+      }
+      if (idleTimeoutId !== null) {
+        window.clearTimeout(idleTimeoutId);
+      }
     };
   }, [router]);
 
