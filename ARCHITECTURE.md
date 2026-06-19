@@ -278,12 +278,13 @@ PortfolioWorkspace
   -> usePortfolio()
   -> createPortfolioRepository()     # mock | live（复用 NEXT_PUBLIC_DATA_SOURCE）
   -> MockPortfolioRepository          # fixture 聚合
-  -> LivePortfolioRepository          # LiquidityRepository + DeepbookUsdPriceOracle + SuiTransactionAdapter
+  -> LivePortfolioRepository          # LiquidityRepository + DeepbookBalanceAdapter + DeepbookUsdPriceOracle + SuiTransactionAdapter
   -> mapToPortfolioView()             # 摘要 / 饼图 / Treemap / 交易列表
 ```
 
 - **mock**：`MOCK_LIQUIDITY_RAW` + `MOCK_DEEPBOOK_RAW` + `MOCK_PORTFOLIO_TRANSACTIONS` + 静态 USD 价表。
-- **live**：复用 `createLiquidityRepository().listPositions()`；交易通过 JSON-RPC `suix_queryTransactionBlocks`（FromAddress + ToAddress 合并去重）。
+- **live**：复用 `createLiquidityRepository().listPositions()` + `lib/data/deepbook/deepbook-balance-adapter.ts`（`getBalanceManagerIds` → `checkManagerBalancesWithAddress` 批量读 BM 余额，映射为 `protocol: deepbook` 持仓行）；交易通过 JSON-RPC `suix_queryTransactionBlocks`（FromAddress + ToAddress 合并去重）。
+- **Asset Composition 筛选**：`PROTOCOL_FILTERS` 含 `DEEPBOOK`；`mapToPortfolioView` 对 DeepBook 行按 `suppliedBalance` 聚合。
 - 钱包余额按 `coinType` 去重后计入 Idle Capital，避免多协议行重复统计。
 - **USD 估值（live）**：`lib/data/pricing/deepbook-usd-price-oracle.ts` 通过 DeepBook `midPrice` 获取 USDC 单价（与 Trading 页共享 `deepbook-mid-price-service` 缓存）；稳定币锚定 $1；`DEEP` 经 `DEEP_SUI × SUI_USDC` 交叉汇率；无 DeepBook 池的资产回退 `lib/fixtures/portfolio.ts` 静态价表；仍无价格则计 $0 并返回 `priceWarning`。
 - **USD 估值（mock）**：仍使用 `lib/fixtures/portfolio.ts` 静态价表。
@@ -292,17 +293,26 @@ PortfolioWorkspace
 
 ```text
 TradingWorkspace
-  -> useTradingMarkets() / useDeepbookOrders() / useTradeSimulation()
+  -> useTradingMarkets() / useOrderHistory() / useDeepbookOpenOrders() / useTradeSimulation()
   -> createTradingRepository()           # mock | live（复用 NEXT_PUBLIC_DATA_SOURCE）
   -> MockTradingRepository | LiveTradingRepository
   -> DeepbookTradingAdapter              # @mysten/deepbook-v3 client extension
-  -> map-to-trading-view()
+  -> map-to-trading-view() / map-to-order-history-view()
   -> useLiquidityPositions()             # DeFi credit source supplied 余额
 ```
 
 - **行情 / 报价**：`lib/data/pricing/deepbook-mid-price-service.ts`（共享 30s 缓存）→ `client.deepbook.midPrice`；报价另用 `getQuoteQuantityOutInputFee` / `getBaseQuantityOutInputFee`。
-- **Swap 成交历史**：`parse-deepbook-swap-txs.ts`（Sui RPC `FromAddress` + `swap_exact_*` MoveCall 解析）→ 可选 Indexer `/trades/:pool` 按 `digest` 富化；**不依赖** Balance Manager（`swapExactQuantity` 使用临时 BM 链上已删除）。
-- **写路径模拟**（按 Swap Widget SOURCE × DESTINATION 路由，`resolve-trade-execution.ts`；统一模型：**source withdraw / merge → DeepBook swap → destination supply / transfer**）：
+- **Order History**：`listOrderHistory` 并行 `parse-deepbook-swap-txs.ts`（`swap_exact_*` MoveCall + **事件优先** `OrderFilled`/`OrderInfo`，balanceChanges 双币/单币回退）+ `parse-deepbook-limit-order-txs.ts`（`place_limit_order` / cancel 事件）→ `map-to-order-history-view.ts`；Swap 成交后 `useOrderHistory.refetchAfterExecution(digest)` 乐观 merge + RPC 索引退避重试；UI：`order-history.tsx`。
+- **Open Limit Orders**：`getBalanceManagerIds(owner)` 发现 BM → `accountOpenOrders` + `getOrderNormalized`；UI：`limit-open-orders.tsx`；撤单 PTB 使用 `cancelLiveOrder` / `cancelAllOrders`。
+- **限价单执行反馈**：`resolve-limit-order-execution-outcome.ts` 解析 tx 事件区分挂单 vs 立即成交。
+- **Limit Order 写路径**（SOURCE only：`wallet` / `navi` / `suilend`）：
+  - SDK：`build-wallet-limit-order-tx` / `build-navi-limit-order-tx` / `build-suilend-limit-order-tx`
+  - 单 PTB：`withdraw → balance_manager::deposit(coin) → place_limit_order`
+  - `expireAtMs`：Dashboard `LimitExpirePreset`（1d/7d/30d/gtc）经 `resolveExpireTimestampMs` 传入 `place_limit_order`；`gtc` 使用 DeepBook `MAX_TIMESTAMP`。
+  - 首单 bootstrap（BM 不存在）：`new_with_custom_owner → register → [mintTradeCap + setBalanceManagerReferral] → deposit → proof → place_limit_order → share`
+  - `depositIntoManager`（SDK 内置）使用 `coinWithBalance` 仅适用于钱包路径；NAVI/Suilend 使用自定义 `appendDepositCoinToBalanceManager` 传入 withdraw coin。
+- **Referral 配置**：`lib/deepbook/referral-config.ts` + env `NEXT_PUBLIC_DEEPBOOK_REFERRAL_*`；mint 脚本 `scripts/mint-deepbook-referrals.mjs`。
+- **写路径模拟**（Swap，按 SOURCE × DESTINATION 路由）：
   - `wallet_wallet`：`simulateTradeWalletSwap` → `buildTradeWalletSwapTx`
   - `wallet_navi`：`simulateTradeWalletNavi` → `buildWalletSwapThenSupplyTx`
   - `wallet_suilend`：`simulateTradeWalletSuilend` → `buildWalletSwapThenSupplySuilendTx`
@@ -352,14 +362,17 @@ TradingWorkspace（Execute）
 
 ```text
 PositionManagement（Supply / Withdraw 按钮）
-  -> useSupplyWithdrawSimulation（按 position.protocolId 路由）
-  -> simulateSupplyWithdraw({ protocol: navi | suilend }) / simulateSupplyThenWithdraw()
-  -> buildNavi*Tx | buildSuilend*Tx
+  -> useSupplyWithdrawSimulation（按 position.protocolId + supply fundSource 路由）
+  -> wallet: simulateSupplyWithdraw({ protocol: navi | suilend })
+  -> deepbook: simulateDeepbookSupply({ protocol, managerId })  # BM withdraw → NAVI/Suilend deposit
+  -> simulateSupplyThenWithdraw()  # withdraw bootstrap only
+  -> buildNavi*Tx | buildSuilend*Tx | buildDeepbookSupply*Tx
   -> dryRunTransaction（预检，始终执行）
   -> [NEXT_PUBLIC_LIQUIDITY_WRITE_MODE=execute 且非 bootstrap]
        dAppKit.signAndExecuteTransaction（钱包签名上链）
 ```
 
+- **Supply SOURCE（Figma `211:253`）**：Supply tab 支持 `wallet | deepbook`；DeepBook 路径读取 `useDeepbookBalances()` 注入 `deepbookCoinBalance`；写路径单 PTB：`balance_manager::withdraw` → `depositCoinPTB` / `suilendClient.deposit`。
 - **写路径模式**：`NEXT_PUBLIC_LIQUIDITY_WRITE_MODE` 默认 `simulate`（仅 dry-run）；`execute` 时在 Supply / Withdraw（非 bootstrap）dry-run 通过后调用 `useDAppKit().signAndExecuteTransaction` 实际上链。supply→withdraw bootstrap 始终仅模拟。
 
 - **协议路由**：`LiquidityPositionView.protocolId`（`navi` / `suilend`）传入 `@deepflow/sdk/supply-withdraw`；默认仍为 `navi` 以保持向后兼容。

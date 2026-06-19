@@ -2,9 +2,180 @@
 
 ## 当前任务
 
-修复钱包签名弹窗 Logo 显示（第二轮加固）——已完成代码侧；待用户断开重连 Slush 后验收。
+Swap 成交后 Order History 不显示问题已修复；待用户验收跨协议 Swap 成交后 History 出现记录。
 
 ## 已完成
+
+- [x] **修复 Swap 成交后 Order History 不显示**：
+  - 根因：跨协议 PTB（如 WALLET→NAVI）swap 输出直接存入协议，owner `balanceChanges` 往往只有 input 资产；原 `parse-deepbook-swap-txs` 要求 base+quote 双币同时变动，导致 swap 被丢弃。
+  - `parse-deepbook-swap-txs.ts`：RPC 增加 `showEvents`；主路径解析 `OrderFilled`/`OrderInfo` 事件（`pool_id` 映射）；回退放宽为单币唯一池匹配 + 既有双币逻辑；导出 `fetchSwapOrderFromDigest`。
+  - `use-order-history.ts`：新增 `refetchAfterExecution(digest)`（digest 乐观 merge + `[0,1500,3000]ms` silent 全量重试）；`use-trade-simulation` `onExecuted(digest)`；`trading-workspace` `handleSwapExecuted` 接线。
+  - 测试：`parse-deepbook-swap-txs.test.ts` 4 passed（wallet_wallet / wallet_navi / 单币回退）。
+  - **待用户验收**：live + execute 下 WALLET→NAVI Swap 成交后 3s 内 History 出现 SWAP FILLED；WALLET→WALLET 回归；刷新页面历史仍在。
+
+- [x] **Trading 成交后局部刷新（Swap + Limit）**：
+  - 根因：`handleTradeExecuted` 调用 `refetchPositions` 将 `positionsLoading` 置 true，触发 `TradingWorkspaceSkeleton` 替换整页。
+  - `use-liquidity-positions`：新增 `silent` refetch，后台更新持仓不置 `isLoading`。
+  - `trading-workspace`：拆分 `handleSwapExecuted`（silent refetch positions + order history）与 `handleLimitOrderExecuted`（仅 refetch orders；navi/suilend 来源静默 refetch positions）；skeleton 仅在首屏无持仓时展示。
+  - `limit-order-panel`：成交后展示 `Limit order placed on book: <hash>`；Limit 模式 footer 不再重复成功文案。
+  - 已验证 `npm run build`。
+  - **待用户验收**：Swap/Limit 成交后三列 UI 不闪 skeleton；Orders 面板局部刷新；Limit 成功 hash 在面板底部可点 explorer。
+
+- [x] **Liquidity 协议下拉与 DeFiConnectivity 联动**：
+  - `liquidity-formatters.ts`：新增 `getUniqueProtocolOptions`、`resolvePositionIdForSelection`。
+  - `position-protocol-banner.tsx`：SUPPLY_TO / WITHDRAW_FROM 协议改为 Select 下拉。
+  - `supply-position-form.tsx` / `withdraw-position-form.tsx`：协议变更调用 `onAssetChange(position.id)`，与 `LiquidityWorkspace.selectedId` 联动左侧表格高亮。
+  - 已验证 `npm run build`。
+  - **待用户验收**：右侧选 `[SUILEND]` + `SUI` 时左侧对应行高亮；点击左侧行时右侧协议/资产下拉同步；切换协议后金额与模拟状态重置。
+
+- [x] **Market Pairs 双币重叠图标**：
+  - `market-pairs.tsx`：用 `PairAssetIcon` 替换单枚 `AssetIcon`，传入 `market.baseAsset` / `market.quoteAsset`。
+  - 复用已有 `components/pair-asset-icon.tsx`（LP 风格重叠 + ring 分隔），数据层无需改动。
+  - 已验证 `npm run build`。
+  - **待用户验收**：MARKET PAIRS 每行可见两枚重叠图标；选中行 ring 在 highlight 背景上仍清晰。
+
+- [x] **ORDERS 全池展示 + History Tab + 50/50 布局**：
+  - 数据：`useOrderHistory()` / `useDeepbookOpenOrders()` 不再传 `poolKey`；`listOpenOrders` 无 poolKey 时聚合 `resolveFeaturedPoolKeys()` 全池 open orders。
+  - 类型：`OpenLimitOrderView.poolKey`；撤单使用订单所属池，非左侧选中市场。
+  - Cancel All：`cancelAllOrdersForPools` 对 open 列表中去重 poolKey 依次 cancelAll（execute 可能多笔签名）。
+  - UI：`order-history-filter-toggle.tsx`（ALL/SWAP/LIMIT）；`orders-panel` 上下各 `flex-1` 固定半高。
+  - 已验证 `npm run build`。
+  - **待用户验收**：选中 SUI_USDC 时仍见 DEEP_SUI 等订单；History Tab 筛选正确；Cancel 非当前池挂单成功。
+
+- [x] **ORDERS 面板拆分 + 限价单历史**：
+  - 根因：用户 DEEP_SUI 限价买单在链上 `OrderFullyFilled`（立即成交），`accountOpenOrders` 正确返回空；原 UI 仅展示 open 挂单，造成「下单成功但无订单」误解。
+  - 数据层：新增 `parse-deepbook-limit-order-txs.ts`、`listOrderHistory`、`use-order-history.ts`、`map-to-order-history-view.ts`；合并 swap + limit 历史。
+  - UI：`orders-panel.tsx` = `order-history.tsx`（上）+ `limit-open-orders.tsx`（下）；移除 `deepbook-orders.tsx` 与 ORDERS 内 SWAP/LIMIT 切换。
+  - 执行反馈：`resolve-limit-order-execution-outcome.ts` → `TradeWidgetFooter` 区分 placed vs filled immediately。
+  - Mock：`MOCK_LIMIT_ORDER_HISTORY` fixture。
+  - 已验证 `npm run build`。
+  - **待用户验收**：live 模式下立即成交限价单出现在 History；真实挂单出现在 Open Limit Orders；限价执行后 footer 文案正确。
+
+- [x] **修复 DeepBook BalanceManager 存入 DEEP 报错**：
+  - 根因：Liquidity DeepBook supply 将 `position.coinType` 作为 `asset` 传入 SDK，而 `resolveDeepbookCoinKey` 只认符号（如 `DEEP`），误报「Asset 0x…::deep::DEEP is not supported」。
+  - 修复：SDK `build-deepbook-supply-navi/suilend-tx` 使用 `assetSymbol ?? asset` 解析 DeepBook coin；`append-deepbook-withdraw-coin` 增加 coin type 反查；`use-supply-withdraw-simulation` DeepBook 路径传 `position.asset`。
+  - 测试：`build-deepbook-supply-navi-tx.unit.test.ts` 新增 coinType+assetSymbol 用例；`append-deepbook-withdraw-coin.unit.test.ts` 6 passed。
+  - **待用户验收**：BalanceManager 有 DEEP 时，Liquidity → NAVI DEEP pool → Source DEEPBOOK → supply 20 DEEP simulate/execute 成功。
+
+- [x] **ORDERS 面板 Limit/Swap 与 DEEPBOOK 同步**：
+  - `deepbook-orders.tsx`：移除本地 tab state；header 复用 `SwapModeToggle`（SWAP | LIMIT）；`limit` 展示未成交限价单 + Cancel All，`swap` 展示 swap 历史。
+  - `trading-workspace.tsx`：向 `DeepbookOrders` 传入 `tradeMode` / `onTradeModeChange`，与 `SwapWidget` 双向联动。
+  - 已验证 `ReadLints` 无新增错误。
+
+- [x] **修复 Landing Email 点击无跳转**：
+  - 根因：Chrome 未配置 `mailto:` 邮件客户端时点击无可见反馈。
+  - 修复：Email 改 Gmail 网页撰写 URL；四条社交链接统一 `external: true` + `target="_blank" rel="noopener noreferrer"`；`landing-hero` 渐变装饰层补 `pointer-events-none`。
+  - **待用户验收**：Chrome 点击 header/footer Email 应打开新标签（Gmail 撰写或登录页）。
+
+- [x] **Landing Header 固定顶栏**：
+  - `landing-header.tsx`：从 Hero 内 `absolute` 改为页面级 `fixed inset-x-5 top-5`；`IntersectionObserver` 监听 `#landing-hero`；Hero 可见时全量显示（Logo + 社交 + Launch App），滚出后仅保留 Logo + Launch App，背景始终透明。
+  - `page.tsx`：顶层渲染 `<LandingHeader />`；`landing-hero.tsx` 移除内嵌 Header。
+  - 小屏滚出 Hero 后顶栏显示 Launch App（`isHeroVisible ? hidden sm:inline-flex : inline-flex`），便于任意位置启动。
+  - 已验证 `npm run build`。
+
+- [x] **Landing 社交链接更新**：
+  - `landing-social-links.tsx`：`SOCIAL_LINKS` 占位 `#` 替换为真实地址——Discord、Telegram、X、Email（现为 Gmail compose URL）。
+  - header / footer 共用同一数据源，三处 variant 同步生效。
+
+- [x] **修复限价单 BUY PAY 输入无法逐字删除**：
+  - 根因：BUY 时 PAY 显示值由 `fromAmount`（base）反算 `toFixed(4)`，每次按键经 lot 对齐回写，与用户正在编辑的 quote 字符串冲突。
+  - 修复：`limit-order-panel` 新增 `buyPayDraft` 本地 state；BUY 输入框绑定草稿，`fromAmount` 仅作换算结果；切换池子/清空/side 变化时 sync 重置草稿。
+  - **待用户验收**：DEEP/SUI Limit BUY PAY 可 Backspace 逐位删除；SELL 路径不受影响。
+
+- [x] **修复限价单 PAY 标的 min/lot 对齐**：
+  - 根因：DeepBook min/lot 以 base 计量，但 BUY 时 PAY 为 quote；min 提示固定显示 base（如 Min 10 DEEP）；quote→base 换算未对齐 lot_size，导致 UI 显示 42.5532 DEEP 但 execute 报 lot_size 错误。
+  - 修复：SDK 新增 `alignBaseUnitsToLot`、`formatLimitOrderMinLabel`、`alignHumanBaseAmountToLot`；`computeBaseQuantityFromQuotePay` 支持 lot 向下对齐；quote 返回 `lotBaseUnits`/`minBaseUnits` 且 BUY min 提示换算为 quote；`limit-order-panel` BUY/SELL 输入对齐 lot；`use-limit-order-simulation` simulate 兜底对齐。
+  - 测试：`limit-order-amount.unit.test.ts` 12 passed；`packages/deepflow-sdk` 91 passed。
+  - **待用户验收**：DEEP/SUI Limit BUY PAY 1 SUI → min 提示为 SUI、RECEIVE 为 lot 整数倍、Execute 不报 lot_size 错误。
+
+- [x] **修复限价单 BUY 精度溢出（Amount exceeds N decimal places）**：
+  - 根因：BUY 时 PAY 输入 quote（如 1 SUI）经 JS 浮点除法换算 base `fromAmount`，产生超出 base 精度的小数位（如 DEEP 6 位、WAL 9 位）；Swap 直接解析用户输入的 pay 金额故不受影响。
+  - 修复：SDK 新增 `computeBaseQuantityFromQuotePay`（bigint 精确换算）、`truncateHumanAmountDecimals`、`formatBaseUnitsToHuman`；`limit-order-panel` BUY 换算改走 SDK；`use-limit-order-simulation` 在 `parseAmountToBaseUnits` 前截断兜底。
+  - 测试：`limit-order-amount.unit.test.ts` 7 passed；`packages/deepflow-sdk` 86 passed。
+  - **待用户验收**：DEEP/SUI、WAL/SUI Limit BUY PAY 1 SUI 不再报 decimal places 错误（仍可能受 min_size / lot_size 约束）。
+
+- [x] **Landing → Portfolio 首访 dev 编译 Phase 2**：
+  - 实测 Phase 1 后：三路由并行编译已消除，但仍有 3 次重复 `GET /portfolio`（~5–7s），与 `icon.png` 编译争抢 CPU。
+  - 修复：
+    - `landing-portfolio-prefetch.tsx`：dev 仅保留单次 `fetch("/portfolio")`；移除同组件 `router.prefetch` 重复；`portfolioWarmupDone` 防 Strict Mode 双触发；延迟至 `load` + 1s 后再预热。
+    - `launch-app-link.tsx`：默认 `prefetch={false}`，移除 hover/touch 重复 prefetch。
+    - `create-liquidity-repository.ts` 改 async dynamic import Navi/Suilend adapter；`live-portfolio-repository.ts` 内 dynamic import 各 data adapter；`use-liquidity-positions.ts` 异步初始化 repository。
+    - `portfolio/page.tsx` 用 `next/dynamic` 加载 `PortfolioWorkspace`，route `loading.tsx` 承接骨架。
+  - 验证：`npm run build` 通过；Portfolio First Load JS 269 kB。
+  - **待用户验收**：重启 dev server，打开 `/` 等待 2s，终端应仅 1 次 `GET /portfolio`；点击 LAUNCH APP 若预热完成应 <500ms。
+
+- [x] **Landing → Portfolio 首访 dev 编译优化（Phase 1）**：
+  - 根因：dev 下 `landing-portfolio-prefetch` 并行 `fetch` 三路由（portfolio/liquidity/trading），争抢 CPU 导致首次编译 ~10.5s；`sessionStorage` 在 dev server 重启后仍阻止预热；`deepbook-balance-adapter` 从 `@deepflow/sdk/trade` barrel 拖入整包 trading PTB 模块。
+  - 修复：
+    - `landing-portfolio-prefetch.tsx`：仅立即预热 `/portfolio`（dev fetch + prod prefetch）；liquidity/trading 延迟 3s 仅 `router.prefetch`；dev 不再用 sessionStorage 跳过；移除 `landing-products.tsx` 重复挂载。
+    - `packages/deepflow-sdk/package.json` 新增 `./trade/resolve-user-balance-manager` export；`deepbook-balance-adapter.ts` 改子路径 import。
+    - `create-portfolio-repository.ts` 改 async dynamic import；`use-portfolio.ts` 异步初始化 repository。
+    - `top-bar.tsx` 导航 Link 设置 `prefetch={false}`，避免 sibling 路由后台编译。
+  - 验证：`npm run build` 通过；Portfolio First Load JS 269 kB（trading/liquidity 仍为 ~998 kB），说明 SDK 子路径拆分生效。
+  - **待用户验收**：重启 dev server 后从 landing 停留 1s 再点 LAUNCH APP，终端应仅见 `/portfolio` 编译（不与 trading/liquidity 同时 ~11s）；二次访问 <500ms。
+
+- [x] **Liquidity 去除 BalanceManager 空态提示 + Portfolio 交易历史 Suiscan 跳转**：
+  - Liquidity：`deepbook-balance-adapter` 无 BalanceManager 时不再返回 warning；`liquidity-workspace` 移除顶部提示 UI（新钱包属正常状态）。
+  - Portfolio：`PortfolioTransactionView` 增加 `txDigest`；`sui-transaction-adapter` 保留完整 digest；`transaction-history` 整行可点击/键盘打开 Suiscan（复用 `lib/sui/explorer.ts`）。
+  - **待用户验收**：无 BM 钱包 Liquidity 页无英文提示；live 模式下 Portfolio 点击交易行跳转 Suiscan 详情。
+
+- [x] **DeepBook Portfolio 读路径 + Liquidity Supply SOURCE 切换**（Figma `211:253`）：
+  - 读路径：新增 `lib/data/deepbook/deepbook-balance-adapter.ts` + `useDeepbookBalances`；`LivePortfolioRepository` 合并 BM 余额；`PROTOCOL_FILTERS` 增加 `DEEPBOOK`；`mapToPortfolioView` 支持 DeepBook 筛选。
+  - Liquidity UI：`supply-source-toggle.tsx`（WALLET | DEEPBOOK）；`supply-position-form` / `position-management` / `liquidity-workspace` 接线；`LiquidityPositionDisplay` 增加 `deepbookCoinBalance`。
+  - SDK：`append-deepbook-withdraw-coin`、`build-deepbook-supply-navi-tx`、`build-deepbook-supply-suilend-tx`、`simulateDeepbookSupply`；`use-supply-withdraw-simulation` 支持 `fundSource: wallet | deepbook` + execute。
+  - 测试：新增 `build-deepbook-supply-navi-tx.unit.test.ts`。
+  - 文档：`ARCHITECTURE.md` 已同步。
+  - **待用户验收**：`NEXT_PUBLIC_DATA_SOURCE=live` Portfolio 两图表展示 DeepBook；Liquidity Supply 切 DEEPBOOK 后 simulate/execute（需已有 BM 余额）。
+
+- [x] **修复限价单 BUY 方向 PAY 不可编辑**：
+  - 根因：`limit-order-panel.tsx` 按 `limitSide` 切换可编辑字段（BUY 时 PAY 只读、RECEIVE 可编辑），与 Swap 面板行为不一致。
+  - 修复：PAY 始终可编辑、RECEIVE 始终只读；BUY 时 PAY 输入 quote 并换算为 base `fromAmount`；`minOrderHint` 固定显示在 PAY 块。
+  - 验证：根 `npm run build` 通过（2026-06-19）。
+
+- [x] **修复限价单切换交易对 rate 不更新 + Navi 下单 abort 1**：
+  - 根因 1：`trading-workspace` 仅在 `limitPrice` 为空时初始化，切换池子后仍保留上一池价格（如 SUI/USDC 3.5 显示在 DEEP/SUI）。
+  - 根因 2：DeepBook `validate_inputs` abort 1 = `EOrderBelowMinimumSize`；跨池未清空 `fromAmount` 导致 DEEP/SUI BUY 数量低于 min_size（10 DEEP）。
+  - 修复：`selectedPoolKey` 变化时重置 `limitPrice`（新池 mid）与 `fromAmount`；SDK 新增 `validateLimitOrderQuantity` / `resolveLimitOrderQuantityBounds`；`use-limit-order-simulation` 下单前校验 + MoveAbort 0/1/2 友好错误；Limit 面板展示 `Min: N BASE`。
+  - 测试：`validate-limit-order-quantity.unit.test.ts` 4 passed；`packages/deepflow-sdk` 测试通过。
+  - **待用户验收**：SUI/USDC → DEEP/SUI 切换后 rate 应变为 ~0.08 SUI/DEEP；DEEP/SUI + Navi BUY 数量 ≥10 DEEP 可签名。
+
+- [x] **修复 Limit Order `withdraw_with_proof` abort code 3（BalanceManager 余额不足）**：
+  - 根因：`place_limit_order` 从 BalanceManager withdraw「订单本金 + maker 手续费」，但 PTB 仅 deposit 本金；且 `payWithDeep` 硬编码为 `true`，会额外尝试 withdraw DEEP 而未 deposit。
+  - SDK（`resolve-deepbook-limit-order.ts`）：`payWithDeep=false`（input-fee）；新增 `deepBookMul` / `resolveLimitOrderDepositWithFee` / `resolveLimitOrderDepositAmount` / `fetchPoolMakerFeeRaw`；deposit = 本金 + `deepBookMul(makerFee, 本金或 quote)`；BUY quote 用链上定点 `mul(qty, price)`。
+  - 接线：`build-*-limit-order-tx`、`appendLimitOrderLeg` 传 `inputPrice`/`inputQuantity`；`use-limit-order-simulation` 余额校验走 `resolveLimitOrderDepositAmount`；`deepbook-trading-adapter.getLimitOrderQuote` 展示 input-fee 与含 fee deposit 估算。
+  - 测试：新增 `resolve-limit-order-deposit.unit.test.ts`；更新 `build-limit-order-tx.unit.test.ts`；`packages/deepflow-sdk` 74 passed；根 `npm run build` 通过（2026-06-19）。
+  - **待用户验收**：`NEXT_PUBLIC_DATA_SOURCE=live` + SUI_USDC + WALLET Limit SELL/BUY simulate/execute。
+
+- [x] **Limit Order UI 重构（Figma `211:93`）+ SDK expiration**：
+  - UI：`swap-widget.tsx` 瘦身为 Shell；新增 `swap-panel.tsx`、`limit-order-panel.tsx`、`limit-rate-block.tsx`、`limit-expire-select.tsx`、`trade-widget-footer.tsx`、`trade-direction-flip.tsx`；增强 `swap-amount-block`（lg/sm）、`swap-mode-toggle`（边框分段）；移除 `limit-side-control.tsx`。
+  - Limit 子页对齐设计：SOURCE → PAY → flip → RECEIVE (EST) → BUY/SELL AT RATE → EXPIRE IN → RATE/FEE → EXECUTE。
+  - SDK：新增 `resolve-limit-expire.ts`（`LimitExpirePreset` / `resolveExpireTimestampMs`）；`appendLimitOrderLeg` / `TradeLimitOrderParams` 支持 `expireAtMs`（GTC 仍用 `MAX_TIMESTAMP`）。
+  - 接线：`trading-workspace` 默认 `limitExpirePreset=7d`；`use-limit-order-simulation` 传 `expireAtMs`；修复无效 `writeMode` prop。
+  - 验证：`packages/deepflow-sdk` 70 passed；根 `npm run build` 通过（2026-06-19）。
+
+- [x] **DeepBook Limit Order 全链路接入**：
+  - SDK（`packages/deepflow-sdk/src/trade/`）：`build-*-limit-order-tx`、`build-cancel-deepbook-order-tx`、`simulate-limit-order`、`resolve-user-balance-manager`、`append-deposit-to-balance-manager`；Referral 配置 `src/deepbook/referral-config.ts`。
+  - Dashboard：Swap Widget **SWAP | LIMIT** 模式；ORDERS 面板 **SWAP | LIMIT**（与 DEEPBOOK 联动）+ Cancel/Cancel All。
+  - 数据层：`listOpenOrders` / `getLimitOrderQuote`；hooks `use-limit-order-simulation`、`use-deepbook-open-orders`、`use-cancel-deepbook-order`。
+  - 运维：`scripts/mint-deepbook-referrals.mjs` + `npm run mint:deepbook-referrals`；env `NEXT_PUBLIC_DEEPBOOK_REFERRAL_<POOLKEY>`。
+  - 文档：`PRODUCT.md`、`ARCHITECTURE.md` 已同步。
+  - 验证：`npm run test` 70 passed；`npm run build` 通过。
+  - **待运维/验收**：mainnet mint 7 池 Referral 并写入 `.env.local` → `NEXT_PUBLIC_DATA_SOURCE=live` dry-run/execute 限价单 → 确认 Open Orders 与撤单。
+  - **集成测试**（SDK mainnet dryRun + devInspect，默认不依赖 Referral）：
+    ```bash
+    cd packages/deepflow-sdk
+    RUN_MAINNET_INTEGRATION=1 \
+    INTEGRATION_SENDER=0x<你的64位hex地址> \
+    INTEGRATION_POOL_KEY=DEEP_SUI \
+    INTEGRATION_AMOUNT=1000000000 \
+    npm run test:integration:limit-order
+    ```
+    - **Wallet SELL** 固定 `SUI_USDC` 卖 SUI（`WALLET_SELL_POOL_KEY`），不受 `INTEGRATION_POOL_KEY` 影响。
+    - **Wallet BUY** 使用 `INTEGRATION_POOL_KEY`（如 `DEEP_SUI`）；数量默认取池 `minSize`（DEEP 池为 10 DEEP），可用 `INTEGRATION_BUY_AMOUNT` 覆盖。
+    - **NAVI / Suilend SELL** 使用 `INTEGRATION_POOL_KEY`；协议路径数量用 `INTEGRATION_PROTOCOL_AMOUNT`（默认 DEEP 池 10 DEEP），**不**复用 wallet 用的 `INTEGRATION_AMOUNT`。
+    - 限价价格自动对齐池 `tickSize`（`resolveTickAlignedLimitPrice`）；首单无 BalanceManager 时 PTB inline bootstrap（`register → deposit → proof → place → share`），`payWithDeep: false`（input-fee，deposit 含 maker fee）。
+    - NAVI / Suilend / 无 open order / obligation 余额不足时自动 skip。Referral opt-in：`INTEGRATION_WITH_REFERRAL=1` + `DEEPBOOK_REFERRAL_<POOLKEY>`。
+    - 验证：`npm run test` 67 passed；`RUN_MAINNET_INTEGRATION=1 … test:integration:limit-order` wallet SELL/BUY 4 项通过（2026-06-19）。
 
 - [x] **钱包签名 Logo 第二轮加固（apple-touch-icon + manifest + 192px icon）**：
   - 用户反馈：浏览器标签页 favicon 已正常，但 Slush 扩展签名弹窗仍显示地球图标。
