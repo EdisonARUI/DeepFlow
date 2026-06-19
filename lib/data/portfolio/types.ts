@@ -1,4 +1,4 @@
-export const PROTOCOL_FILTERS = ["ALL", "NAVI", "SUILEND", "WALLET"] as const;
+export const PROTOCOL_FILTERS = ["ALL", "NAVI", "SUILEND", "DEEPBOOK", "WALLET"] as const;
 export type ProtocolFilter = (typeof PROTOCOL_FILTERS)[number];
 
 export const EXPOSURE_PROTOCOLS = [
@@ -49,6 +49,7 @@ export type PortfolioTransactionView = {
   amount: string;
   status: PortfolioTransactionStatus;
   txHash: string;
+  txDigest: string;
 };
 
 export type PortfolioView = {

@@ -130,6 +130,7 @@ function mapTransactionBlock(
     amount,
     status: mapStatus(tx),
     txHash: truncateDigest(tx.digest),
+    txDigest: tx.digest,
   };
 }
 

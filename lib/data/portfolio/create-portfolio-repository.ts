@@ -1,6 +1,4 @@
 import type { PortfolioRepository } from "./portfolio-repository";
-import { LivePortfolioRepository } from "./live-portfolio-repository";
-import { MockPortfolioRepository } from "./mock-portfolio-repository";
 
 export type PortfolioDataSource = "mock" | "live";
 
@@ -9,7 +7,14 @@ function resolveDataSource(): PortfolioDataSource {
   return source === "live" ? "live" : "mock";
 }
 
-export function createPortfolioRepository(): PortfolioRepository {
+export async function createPortfolioRepository(): Promise<PortfolioRepository> {
   const source = resolveDataSource();
-  return source === "live" ? new LivePortfolioRepository() : new MockPortfolioRepository();
+
+  if (source === "live") {
+    const { LivePortfolioRepository } = await import("./live-portfolio-repository");
+    return new LivePortfolioRepository();
+  }
+
+  const { MockPortfolioRepository } = await import("./mock-portfolio-repository");
+  return new MockPortfolioRepository();
 }

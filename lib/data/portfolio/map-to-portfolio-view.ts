@@ -157,6 +157,13 @@ function buildAllocationForFilter(
     return aggregateTokenBalances(walletEntries);
   }
 
+  if (filter === "DEEPBOOK") {
+    const deepbookPositions = positions.filter(
+      (p) => normalizeProtocol(p.protocol) === "deepbook",
+    );
+    return buildAllocationForPositions(deepbookPositions, prices, "supplied");
+  }
+
   const protocolKey = filter.toLowerCase();
   const filtered = positions.filter((p) => normalizeProtocol(p.protocol) === protocolKey);
   return buildAllocationForPositions(filtered, prices, "supplied");
