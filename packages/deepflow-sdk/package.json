@@ -8,10 +8,14 @@
     ".": "./src/index.ts",
     "./supply-withdraw": "./src/supply-withdraw.ts",
     "./amount/parse-base-units": "./src/amount/parse-base-units.ts",
-    "./trade": "./src/trade.ts"
+    "./amount/truncate-human-amount-decimals": "./src/amount/truncate-human-amount-decimals.ts",
+    "./amount/compute-base-quantity-from-quote-pay": "./src/amount/compute-base-quantity-from-quote-pay.ts",
+    "./trade": "./src/trade.ts",
+    "./trade/resolve-user-balance-manager": "./src/trade/resolve-user-balance-manager.ts"
   },
   "scripts": {
-    "test": "vitest run --config vitest.config.ts"
+    "test": "vitest run --config vitest.config.ts",
+    "test:integration:limit-order": "vitest run --config vitest.config.ts tests/limit-order.integration.test.ts tests/cancel-limit-order.integration.test.ts"
   },
   "dependencies": {
     "@mysten/deepbook-v3": "^1.4.1",
