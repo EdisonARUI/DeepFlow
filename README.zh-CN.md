@@ -51,8 +51,6 @@ flowchart LR
 
 ## 演示亮点
 
-完整旁白脚本：[`demo_scripts.md`](demo_scripts.md) · [演示视频](https://youtu.be/6bz4y6txcHg)
-
 ### 1. Portfolio
 
 连接钱包 → 一览总资产、闲置/在用资金、利用率、资产构成与各协议敞口，无需在多协议页面间切换。
@@ -82,14 +80,6 @@ flowchart LR
 ## 团队成员
 
 - [@EdisonARUI](https://github.com/EdisonARUI)
-
-## 部署信息
-
-| | |
-| --- | --- |
-| **Network** | Sui Mainnet |
-| **Package ID** | 无自研 Move 合约；由 [`packages/deepflow-sdk`](packages/deepflow-sdk) 编排 PTB，直接调用链上协议 |
-| **已集成协议** | NAVI、Suilend、DeepBook v3（Mainnet） |
 
 ## 技术栈
 

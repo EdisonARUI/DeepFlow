@@ -51,8 +51,6 @@ flowchart LR
 
 ## Demo Highlights
 
-Full narration script: [`demo_scripts.md`](demo_scripts.md) · [Demo Video](https://youtu.be/6bz4y6txcHg)
-
 ### 1. Portfolio
 
 Connect wallet → view Total Assets, Idle / Working Capital, utilization rate, asset composition, and per-protocol exposure without switching tabs.
@@ -82,14 +80,6 @@ Example: NAVI SUI pool — enter amount, **Supply** from Wallet or DeepBook; swi
 ## Team
 
 - [@EdisonARUI](https://github.com/EdisonARUI)
-
-## Deployment
-
-| | |
-| --- | --- |
-| **Network** | Sui Mainnet |
-| **Package ID** | No custom Move package — execution is composed via [`packages/deepflow-sdk`](packages/deepflow-sdk) PTBs against existing on-chain protocols |
-| **Integrated protocols** | NAVI, Suilend, DeepBook v3 (Mainnet) |
 
 ## Tech Stack
 
