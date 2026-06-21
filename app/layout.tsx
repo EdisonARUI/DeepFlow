@@ -16,7 +16,11 @@ const jetbrainsMono = JetBrains_Mono({
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ??
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:3000");
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -34,7 +38,22 @@ export const metadata: Metadata = {
   openGraph: {
     title: "DeepFlow",
     description: "Sui DeFi atomic execution dashboard",
-    images: [{ url: "/apple-touch-icon.png", width: 180, height: 180, alt: "DeepFlow" }],
+    type: "website",
+    siteName: "DeepFlow",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 2560,
+        height: 1452,
+        alt: "DeepFlow — Unify Liquidity on DeepBook",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "DeepFlow",
+    description: "Sui DeFi atomic execution dashboard",
+    images: ["/og-image.png"],
   },
 };
 
